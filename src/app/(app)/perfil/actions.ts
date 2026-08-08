@@ -13,7 +13,7 @@ export async function guardarPerfil(_prev: unknown, formData: FormData) {
     matricula: String(formData.get('matricula') ?? '').trim() || null,
     telefono:  String(formData.get('telefono') ?? '').trim() || null,
     email:     String(formData.get('email') ?? '').trim() || null,
-  }).eq('id', user.id);
+  } as any).eq('id', user.id);
 
   if (error) return { error: error.message };
   revalidatePath('/dashboard');
