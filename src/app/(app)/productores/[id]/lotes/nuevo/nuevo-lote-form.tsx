@@ -4,12 +4,12 @@ import Link from 'next/link';
 import { crearLote } from './actions';
 
 const CULTIVOS = ['Soja','Maíz','Trigo','Girasol','Sorgo','Cebada','Alfalfa','Otro'] as const;
-
+type State = { error?: string } | null;
 type Productor = { id: string; razon_social: string };
 type Campana = { id: string; nombre: string };
 
 export function NuevoLoteForm({ productor, campanas }: { productor: Productor; campanas: Campana[] }) {
-  const [state, action, pending] = useActionState(crearLote, null);
+  const [state, action, pending] = useActionState<State, FormData>(crearLote, null);
 
   return (
     <div className="max-w-lg mx-auto">
