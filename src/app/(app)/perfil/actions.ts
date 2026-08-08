@@ -7,13 +7,15 @@ export async function guardarPerfil(_prev: unknown, formData: FormData) {
   const { data: { user } } = await sb.auth.getUser();
   if (!user) return { error: 'No autenticado' };
 
-  const { error } = await sb.from('ingenieros').update({
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const client = sb as any;
+  const { error } = await client.from('ingenieros').update({
     nombre:    String(formData.get('nombre') ?? '').trim(),
     apellido:  String(formData.get('apellido') ?? '').trim() || null,
     matricula: String(formData.get('matricula') ?? '').trim() || null,
     telefono:  String(formData.get('telefono') ?? '').trim() || null,
     email:     String(formData.get('email') ?? '').trim() || null,
-  } as any).eq('id', user.id);
+  }).eq('id', user.id);
 
   if (error) return { error: error.message };
   revalidatePath('/dashboard');
