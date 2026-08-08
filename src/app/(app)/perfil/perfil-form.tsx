@@ -3,9 +3,10 @@ import { useActionState } from 'react';
 import { guardarPerfil } from './actions';
 
 type Ing = { id: string; nombre: string; apellido: string | null; matricula: string | null; telefono: string | null; email: string | null; logo_url: string | null } | null;
+type State = { error?: string; ok?: boolean } | null;
 
 export function PerfilForm({ ingeniero }: { ingeniero: Ing }) {
-  const [state, action, pending] = useActionState(guardarPerfil, null);
+  const [state, action, pending] = useActionState<State, FormData>(guardarPerfil, null);
 
   return (
     <div className="max-w-lg mx-auto">
