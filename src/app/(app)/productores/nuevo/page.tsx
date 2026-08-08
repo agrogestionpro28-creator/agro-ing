@@ -3,8 +3,10 @@ import { useActionState } from 'react';
 import Link from 'next/link';
 import { crearProductor } from '../actions';
 
+type State = { error?: string } | null;
+
 export default function NuevoProductorPage() {
-  const [state, action, pending] = useActionState(crearProductor, null);
+  const [state, action, pending] = useActionState<State, FormData>(crearProductor, null);
 
   return (
     <div className="max-w-lg mx-auto">
@@ -13,12 +15,9 @@ export default function NuevoProductorPage() {
 
       <form action={action} className="card p-6 space-y-4">
         <div>
-          <label className="block text-xs font-semibold text-mid mb-1.5 uppercase tracking-wider">
-            Razón social *
-          </label>
+          <label className="block text-xs font-semibold text-mid mb-1.5 uppercase tracking-wider">Razón social *</label>
           <input name="razon_social" type="text" required className="field" placeholder="PÉREZ JUAN / AGRO SA" />
         </div>
-
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="block text-xs font-semibold text-mid mb-1.5 uppercase tracking-wider">CUIT</label>
@@ -29,7 +28,6 @@ export default function NuevoProductorPage() {
             <input name="localidad" type="text" className="field" placeholder="San Carlos Centro" />
           </div>
         </div>
-
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="block text-xs font-semibold text-mid mb-1.5 uppercase tracking-wider">Teléfono</label>
@@ -42,9 +40,7 @@ export default function NuevoProductorPage() {
         </div>
 
         {state?.error && (
-          <p className="text-xs text-danger bg-red-900/20 border border-red-900/40 rounded px-3 py-2">
-            {state.error}
-          </p>
+          <p className="text-xs text-danger bg-red-900/20 border border-red-900/40 rounded px-3 py-2">{state.error}</p>
         )}
 
         <div className="flex gap-3 pt-2">
