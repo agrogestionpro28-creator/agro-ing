@@ -11,14 +11,26 @@ type Productor = { id: string; razon_social: string; cuit: string | null; locali
 type Campana = { id: string; nombre: string; fecha_inicio: string; fecha_fin: string };
 type Lote = { id: string; nombre: string; hectareas: number; cultivo: string | null; cultivo_2: string | null; variedad: string | null; fecha_siembra: string | null; notas: string | null };
 
-const CULTIVO_COLOR: Record<string, string> = {
-  Soja:    'bg-[#1a3d24] text-[#2EAA6E]',
-  Maíz:    'bg-[#2a1f00] text-[#f59e0b]',
-  Trigo:   'bg-[#2a1500] text-amber-400',
-  Girasol: 'bg-[#2a2800] text-yellow-300',
-  Sorgo:   'bg-[#2a1a0a] text-orange-400',
-  Cebada:  'bg-[#1a2a10] text-green-400',
+// Color por cultivo: badge bg/text + border del card
+const CULTIVO_CONFIG: Record<string, { badge: string; border: string; glow: string; hex: string }> = {
+  Soja:    { badge: 'bg-[#1a3d24] text-[#2EAA6E]', border: '#2EAA6E', glow: 'rgba(46,170,110,0.25)', hex: '#2EAA6E' },
+  'Soja 2°': { badge: 'bg-[#1a3d24] text-[#2EAA6E]', border: '#2EAA6E', glow: 'rgba(46,170,110,0.25)', hex: '#2EAA6E' },
+  Maíz:    { badge: 'bg-[#1a2a00] text-[#84cc16]',  border: '#84cc16', glow: 'rgba(132,204,22,0.25)',  hex: '#84cc16' },
+  'Maíz 1°': { badge: 'bg-[#1a2a00] text-[#84cc16]', border: '#84cc16', glow: 'rgba(132,204,22,0.25)', hex: '#84cc16' },
+  Trigo:   { badge: 'bg-[#2a1d00] text-[#f59e0b]',  border: '#f59e0b', glow: 'rgba(245,158,11,0.25)', hex: '#f59e0b' },
+  Cebada:  { badge: 'bg-[#2a1d00] text-[#fbbf24]',  border: '#fbbf24', glow: 'rgba(251,191,36,0.25)', hex: '#fbbf24' },
+  Sorgo:   { badge: 'bg-[#2a1200] text-[#b45309]',  border: '#b45309', glow: 'rgba(180,83,9,0.25)',   hex: '#b45309' },
+  Girasol: { badge: 'bg-[#001a2a] text-[#38bdf8]',  border: '#38bdf8', glow: 'rgba(56,189,248,0.25)', hex: '#38bdf8' },
+  Alfalfa: { badge: 'bg-[#0a2a1a] text-[#34d399]',  border: '#34d399', glow: 'rgba(52,211,153,0.25)', hex: '#34d399' },
 };
+const DEFAULT_CONFIG = { badge: 'bg-base-4 text-mid', border: '#333', glow: 'rgba(100,100,100,0.15)', hex: '#666' };
+
+function getCultivoActual(cultivo: string | null, cultivo_2: string | null): string | null {
+  // El cultivo actual es el que está sembrado: si hay 2do cultivo es el que se sembró después
+  // Lógica: si tiene 2do cultivo, mostramos el 2do como "activo"
+  // El usuario puede ajustar esto; por ahora usamos el 1ro si no hay 2do
+  return cultivo_2 || cultivo;
+}
 
 function loadXLSX(): Promise<void> {
   return new Promise((resolve) => {
@@ -202,25 +214,55 @@ export function ProductorDetail({ productor, campanas }: { productor: Productor;
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
           {lotes.map((l) => {
+            const cultivoActual = getCultivoActual(l.cultivo, l.cultivo_2);
+            const cfg = CULTIVO_CONFIG[cultivoActual ?? ''] ?? DEFAULT_CONFIG;
             const cultivos = [l.cultivo, l.cultivo_2].filter(Boolean);
+
             return (
-              <div key={l.id} className="card aspect-square p-3 flex flex-col justify-between relative overflow-hidden hover:border-ochre transition-all duration-150 hover:-translate-y-0.5">
-                <svg className="absolute top-0 right-0 opacity-[0.12] w-14 h-12 pointer-events-none" viewBox="0 0 60 52" aria-hidden="true">
-                  <polygon points="15,0 45,0 60,26 45,52 15,52 0,26" fill="none" stroke="#f59e0b" strokeWidth="1.5"/>
+              <div
+                key={l.id}
+                className="aspect-square p-3 flex flex-col justify-between relative overflow-hidden transition-all duration-150 hover:-translate-y-0.5 rounded-card"
+                style={{
+                  background: '#131313',
+                  border: `1.5px solid ${cfg.border}`,
+                  boxShadow: `0 0 12px ${cfg.glow}, inset 0 0 30px rgba(0,0,0,0.4)`,
+                }}
+              >
+                {/* Panal watermark con color del cultivo */}
+                <svg className="absolute top-0 right-0 opacity-[0.15] w-14 h-12 pointer-events-none" viewBox="0 0 60 52" aria-hidden="true">
+                  <polygon points="15,0 45,0 60,26 45,52 15,52 0,26" fill="none" stroke={cfg.hex} strokeWidth="1.5"/>
                 </svg>
+
+                {/* Nombre + variedad */}
                 <div>
                   <p className="text-hi font-bold text-sm leading-tight line-clamp-2">{l.nombre}</p>
                   {l.variedad && <p className="text-lo text-[10px] mt-0.5 truncate">{l.variedad}</p>}
                 </div>
-                <div>
-                  <div className="text-afa font-black text-3xl leading-none tabular-nums">{l.hectareas}</div>
-                  <div className="text-lo text-[10px]">ha</div>
+
+                {/* Has centradas con color del cultivo */}
+                <div className="flex items-baseline gap-1.5">
+                  <div className="font-black text-3xl leading-none tabular-nums" style={{ color: cfg.hex }}>
+                    {l.hectareas}
+                  </div>
+                  <div className="text-[11px] font-semibold" style={{ color: cfg.hex }}>ha</div>
                 </div>
+
+                {/* Cultivos + fecha */}
                 <div>
                   <div className="flex flex-wrap gap-1 mb-1">
-                    {cultivos.map((c) => (
-                      <span key={c} className={cn('text-[9px] font-bold px-1.5 py-0.5 rounded', CULTIVO_COLOR[c!] ?? 'bg-base-4 text-mid')}>{c}</span>
-                    ))}
+                    {cultivos.map((c, i) => {
+                      const ccfg = CULTIVO_CONFIG[c ?? ''] ?? DEFAULT_CONFIG;
+                      const esActual = c === cultivoActual;
+                      return (
+                        <span
+                          key={c}
+                          className={cn('text-[9px] font-bold px-1.5 py-0.5 rounded', ccfg.badge)}
+                          style={esActual ? { outline: `1px solid ${ccfg.hex}` } : { opacity: 0.6 }}
+                        >
+                          {c}{i === 0 && l.cultivo_2 ? ' 1°' : i === 1 ? ' 2°' : ''}
+                        </span>
+                      );
+                    })}
                   </div>
                   {l.fecha_siembra && <div className="font-mono text-[9px] text-lo">Siem: {l.fecha_siembra}</div>}
                 </div>
