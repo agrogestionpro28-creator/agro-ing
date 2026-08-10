@@ -30,6 +30,20 @@ function loadXLSX(): Promise<void> {
   });
 }
 
+
+function parseFecha(val: any): string | null {
+  if (!val) return null;
+  if (val instanceof Date) {
+    return val.toISOString().slice(0, 10);
+  }
+  const s = String(val).trim();
+  if (!s) return null;
+  // Si es fecha JS como string
+  const d = new Date(s);
+  if (!isNaN(d.getTime())) return d.toISOString().slice(0, 10);
+  return null;
+}
+
 export function ProductorDetail({ productor, campanas }: { productor: Productor; campanas: Campana[] }) {
   const { campanaId } = useCampana();
   const [lotes, setLotes] = useState<Lote[]>([]);
@@ -96,7 +110,7 @@ export function ProductorDetail({ productor, campanas }: { productor: Productor;
           cultivo:       String(r['Cultivo'] || r['cultivo'] || '').trim() || null,
           cultivo_2:     String(r['2do Cultivo'] || r['cultivo_2'] || '').trim() || null,
           variedad:      String(r['Variedad'] || r['variedad'] || '').trim() || null,
-          fecha_siembra: String(r['Fecha Siembra'] || r['fecha_siembra'] || '').trim() || null,
+          fecha_siembra: parseFecha(r['Fecha Siembra'] || r['fecha_siembra']),
           notas:         String(r['Notas'] || r['notas'] || '').trim() || null,
         }))
         .filter(r => r.nombre && r.hectareas > 0);
