@@ -48,7 +48,7 @@ export function ProductorDetail({ productor, campanas }: { productor: Productor;
 
   // ── EXPORTAR a Excel ──
   async function exportar() {
-    const XLSX = await import('https://cdn.sheetjs.com/xlsx-0.20.1/package/xlsx.mjs' as any);
+    const XLSX = import('xlsx');
     const rows = [
       ['Nombre', 'Hectáreas', 'Cultivo', '2do Cultivo', 'Variedad', 'Fecha Siembra', 'Notas'],
       ...lotes.map(l => [l.nombre, l.hectareas, l.cultivo ?? '', l.cultivo_2 ?? '', l.variedad ?? '', l.fecha_siembra ?? '', l.notas ?? '']),
@@ -68,7 +68,7 @@ export function ProductorDetail({ productor, campanas }: { productor: Productor;
     setMsg('');
 
     try {
-      const XLSX = await import('https://cdn.sheetjs.com/xlsx-0.20.1/package/xlsx.mjs' as any);
+      const XLSX = import('xlsx');
       const buffer = await file.arrayBuffer();
       const wb = XLSX.read(buffer, { type: 'array', cellDates: true });
       const ws = wb.Sheets[wb.SheetNames[0]];
@@ -114,7 +114,7 @@ export function ProductorDetail({ productor, campanas }: { productor: Productor;
 
   // ── DESCARGAR PLANTILLA ──
   async function descargarPlantilla() {
-    const XLSX = await import('https://cdn.sheetjs.com/xlsx-0.20.1/package/xlsx.mjs' as any);
+    const XLSX = import('xlsx');
     const rows = [
       ['Nombre', 'Hectáreas', 'Cultivo', '2do Cultivo', 'Variedad', 'Fecha Siembra', 'Notas'],
       ['Lote Norte', 120.5, 'Soja', '', 'DM 4210', '2026-11-01', 'Ejemplo'],
