@@ -1,10 +1,11 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import * as XLSX from 'xlsx';
 import { createClient } from '@/lib/supabase/client';
 import { useCampana } from '@/components/layout/app-shell';
 import { cn } from '@/lib/utils';
+
+declare const XLSX: any;
 
 type Productor = { id: string; razon_social: string; cuit: string | null; localidad: string | null; telefono: string | null; email: string | null };
 type Campana = { id: string; nombre: string; fecha_inicio: string; fecha_fin: string };
@@ -18,6 +19,16 @@ const CULTIVO_COLOR: Record<string, string> = {
   Sorgo:   'bg-[#2a1a0a] text-orange-400',
   Cebada:  'bg-[#1a2a10] text-green-400',
 };
+
+function loadXLSX(): Promise<void> {
+  return new Promise((resolve) => {
+    if (typeof XLSX !== 'undefined') { resolve(); return; }
+    const script = document.createElement('script');
+    script.src = 'https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js';
+    script.onload = () => resolve();
+    document.head.appendChild(script);
+  });
+}
 
 export function ProductorDetail({ productor, campanas }: { productor: Productor; campanas: Campana[] }) {
   const { campanaId } = useCampana();
@@ -47,7 +58,8 @@ export function ProductorDetail({ productor, campanas }: { productor: Productor;
     setLoading(false);
   }
 
-  function exportar() {
+  async function exportar() {
+    await loadXLSX();
     const rows = [
       ['Nombre', 'Hectáreas', 'Cultivo', '2do Cultivo', 'Variedad', 'Fecha Siembra', 'Notas'],
       ...lotes.map(l => [l.nombre, l.hectareas, l.cultivo ?? '', l.cultivo_2 ?? '', l.variedad ?? '', l.fecha_siembra ?? '', l.notas ?? '']),
@@ -64,10 +76,10 @@ export function ProductorDetail({ productor, campanas }: { productor: Productor;
     if (!file) return;
     setImportando(true);
     setMsg('');
-
     try {
+      await loadXLSX();
       const buffer = await file.arrayBuffer();
-      const wb = XLSX.read(buffer, { type: 'array', cellDates: true });
+      const wb = XLSX.read(new Uint8Array(buffer), { type: 'array', cellDates: true });
       const ws = wb.Sheets[wb.SheetNames[0]];
       const rows: any[] = XLSX.utils.sheet_to_json(ws, { defval: '' });
 
@@ -90,30 +102,27 @@ export function ProductorDetail({ productor, campanas }: { productor: Productor;
         .filter(r => r.nombre && r.hectareas > 0);
 
       if (toInsert.length === 0) {
-        setMsg('No se encontraron filas válidas. Revisá columnas: Nombre y Hectáreas obligatorias.');
+        setMsg('No se encontraron filas válidas. Columnas requeridas: Nombre y Hectáreas.');
         setImportando(false);
         return;
       }
 
       const { error } = await sb.from('lotes').insert(toInsert);
       if (error) { setMsg('Error: ' + error.message); }
-      else {
-        setMsg(`✓ ${toInsert.length} lotes importados correctamente`);
-        await fetchLotes();
-      }
+      else { setMsg(`✓ ${toInsert.length} lotes importados`); await fetchLotes(); }
     } catch (err: any) {
-      setMsg('Error al leer el archivo: ' + err.message);
+      setMsg('Error: ' + err.message);
     }
-
     setImportando(false);
     if (fileRef.current) fileRef.current.value = '';
   }
 
-  function descargarPlantilla() {
+  async function descargarPlantilla() {
+    await loadXLSX();
     const rows = [
       ['Nombre', 'Hectáreas', 'Cultivo', '2do Cultivo', 'Variedad', 'Fecha Siembra', 'Notas'],
       ['Lote Norte', 120.5, 'Soja', '', 'DM 4210', '2026-11-01', 'Ejemplo'],
-      ['Lote Sur', 85, 'Trigo', 'Soja', 'Klein Tauro', '2026-06-15', 'Doble cultivo trigo/soja'],
+      ['Lote Sur', 85, 'Trigo', 'Soja', 'Klein Tauro', '2026-06-15', 'Doble cultivo'],
     ];
     const ws = XLSX.utils.aoa_to_sheet(rows);
     ws['!cols'] = [{ wch: 20 }, { wch: 10 }, { wch: 12 }, { wch: 12 }, { wch: 15 }, { wch: 14 }, { wch: 30 }];
@@ -153,9 +162,7 @@ export function ProductorDetail({ productor, campanas }: { productor: Productor;
             {importando ? 'Importando…' : '↑ Importar Excel'}
           </button>
           <input ref={fileRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={importar} />
-          {lotes.length > 0 && (
-            <button onClick={exportar} className="btn-ghost text-xs py-1.5 px-3">↓ Exportar Excel</button>
-          )}
+          {lotes.length > 0 && <button onClick={exportar} className="btn-ghost text-xs py-1.5 px-3">↓ Exportar</button>}
           <Link href={`/productores/${productor.id}/lotes/nuevo`} className="btn-primary text-xs py-1.5 px-3">+ Nuevo lote</Link>
         </div>
       </div>
@@ -174,7 +181,7 @@ export function ProductorDetail({ productor, campanas }: { productor: Productor;
           <p className="text-lo text-xs mb-4">Importá desde Excel o cargá uno por uno.</p>
           <div className="flex gap-3 justify-center">
             <button onClick={descargarPlantilla} className="btn-ghost text-xs">↓ Plantilla</button>
-            <button onClick={() => fileRef.current?.click()} className="btn-ghost text-xs">↑ Importar Excel</button>
+            <button onClick={() => fileRef.current?.click()} className="btn-ghost text-xs">↑ Importar</button>
             <Link href={`/productores/${productor.id}/lotes/nuevo`} className="btn-primary text-xs">+ Nuevo lote</Link>
           </div>
         </div>
