@@ -196,19 +196,32 @@ export function ProductorDetail({ productor, campanas }: { productor: Productor;
             const actual=getCultivoActual(l.cultivo,l.cultivo_2);
             const s=CROP_STYLES[actual??'']??DEFAULT_STYLE;
             const cultivos=[l.cultivo,l.cultivo_2].filter(Boolean);
+            // Colores directos por cultivo
+            const cropColor: Record<string,{fill:string,stroke:string}> = {
+              'Soja':    {fill:'#052010',stroke:'#22c55e'},
+              'Soja 2°': {fill:'#052010',stroke:'#22c55e'},
+              'Maíz':    {fill:'#0d1a00',stroke:'#84cc16'},
+              'Maíz 1°': {fill:'#0d1a00',stroke:'#84cc16'},
+              'Trigo':   {fill:'#1a0f00',stroke:'#f59e0b'},
+              'Cebada':  {fill:'#1a1200',stroke:'#fbbf24'},
+              'Sorgo':   {fill:'#1a0500',stroke:'#ea580c'},
+              'Girasol': {fill:'#00101a',stroke:'#38bdf8'},
+              'Alfalfa': {fill:'#001a10',stroke:'#34d399'},
+            };
+            const cc = actual ? (cropColor[actual] ?? {fill:'#1a1a1a',stroke:'#444'}) : {fill:'#1a1a1a',stroke:'#444'};
             return (
               <div key={l.id} className="aspect-square rounded-card flex flex-col relative overflow-hidden group bg-base-3 border border-base-5 transition-all duration-150 hover:-translate-y-1 hover:border-base-6">
 
                 {/* Barra de color arriba */}
-                <div style={{ height: 4, background: HEX_COLOR[actual??'']?.stroke ?? '#333', width: '100%' }} />
+                <div style={{ height: '4px', background: cc.stroke, width: '100%' }} />
 
                 {/* Hexágono grande con color del cultivo */}
                 <div className="absolute top-2 right-2 pointer-events-none">
                   <svg width="52" height="46" viewBox="0 0 60 52">
                     <polygon
                       points="15,0 45,0 60,26 45,52 15,52 0,26"
-                      fill={HEX_COLOR[actual??'']?.fill ?? '#1a1a1a'}
-                      stroke={HEX_COLOR[actual??'']?.stroke ?? '#333'}
+                      fill={cc.fill}
+                      stroke={cc.stroke}
                       strokeWidth="4"
                     />
                   </svg>
