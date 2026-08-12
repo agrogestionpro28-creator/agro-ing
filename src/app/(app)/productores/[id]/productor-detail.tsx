@@ -142,7 +142,10 @@ export function ProductorDetail({ productor, campanas }: { productor: Productor;
 
   return (
     <div>
-      <p className="eyebrow mb-1">Productor</p>
+      <div className="flex items-start justify-between mb-1">
+        <p className="eyebrow">Productor</p>
+        <Link href={`/productores/${productor.id}/editar`} className="btn-ghost text-xs py-1 px-3">✏ Editar</Link>
+      </div>
       <h1 className="text-2xl font-bold text-hi mb-1">{productor.razon_social}</h1>
       <p className="text-mid text-sm mb-6">
         {[productor.cuit,productor.localidad,productor.telefono].filter(Boolean).join(' · ')||'Sin datos adicionales'}
