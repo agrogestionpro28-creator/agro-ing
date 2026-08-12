@@ -26,18 +26,19 @@ const CROP_STYLES: Record<string, { cardStyle: string; numColor: string; badgeSt
 const DEFAULT_STYLE = { cardStyle: 'bg-base-3 border-base-5', numColor: 'text-mid', badgeStyle: 'bg-base-4 text-lo border border-base-5' };
 
 
-// Colores SVG reales por cultivo (fill + stroke para hexágono, bar para barra superior)
-const HEX_COLOR: Record<string, { fill: string; stroke: string; bar: string }> = {
-  'Soja':     { fill: '#052010', stroke: '#22c55e', bar: 'bg-green-500' },
-  'Soja 2°':  { fill: '#052010', stroke: '#22c55e', bar: 'bg-green-500' },
-  'Maíz':     { fill: '#0d1a00', stroke: '#84cc16', bar: 'bg-lime-500' },
-  'Maíz 1°':  { fill: '#0d1a00', stroke: '#84cc16', bar: 'bg-lime-500' },
-  'Trigo':    { fill: '#1a0f00', stroke: '#f59e0b', bar: 'bg-amber-500' },
-  'Cebada':   { fill: '#1a1200', stroke: '#fbbf24', bar: 'bg-yellow-400' },
-  'Sorgo':    { fill: '#1a0800', stroke: '#c2410c', bar: 'bg-orange-700' },
-  'Girasol':  { fill: '#00101a', stroke: '#38bdf8', bar: 'bg-sky-400' },
-  'Alfalfa':  { fill: '#001a10', stroke: '#34d399', bar: 'bg-teal-400' },
-};
+// Resolver color por nombre de cultivo (normalizado)
+function cropColor(cultivo: string | null): { fill: string; stroke: string } {
+  if (!cultivo) return { fill: '#1a1a1a', stroke: '#444444' };
+  const n = cultivo.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+  if (n.includes('soja'))    return { fill: '#052010', stroke: '#22c55e' };
+  if (n.includes('maiz') || n.includes('maíz')) return { fill: '#0d1a00', stroke: '#84cc16' };
+  if (n.includes('trigo'))   return { fill: '#1a0f00', stroke: '#f59e0b' };
+  if (n.includes('cebada'))  return { fill: '#1a1200', stroke: '#fbbf24' };
+  if (n.includes('sorgo'))   return { fill: '#1a0500', stroke: '#ea580c' };
+  if (n.includes('girasol')) return { fill: '#00101a', stroke: '#38bdf8' };
+  if (n.includes('alfalfa')) return { fill: '#001a10', stroke: '#34d399' };
+  return { fill: '#1a1a1a', stroke: '#444444' };
+}
 
 function getCultivoActual(c1: string | null, c2: string | null) { return c2 || c1; }
 
@@ -196,19 +197,7 @@ export function ProductorDetail({ productor, campanas }: { productor: Productor;
             const actual=getCultivoActual(l.cultivo,l.cultivo_2);
             const s=CROP_STYLES[actual??'']??DEFAULT_STYLE;
             const cultivos=[l.cultivo,l.cultivo_2].filter(Boolean);
-            // Colores directos por cultivo
-            const cropColor: Record<string,{fill:string,stroke:string}> = {
-              'Soja':    {fill:'#052010',stroke:'#22c55e'},
-              'Soja 2°': {fill:'#052010',stroke:'#22c55e'},
-              'Maíz':    {fill:'#0d1a00',stroke:'#84cc16'},
-              'Maíz 1°': {fill:'#0d1a00',stroke:'#84cc16'},
-              'Trigo':   {fill:'#1a0f00',stroke:'#f59e0b'},
-              'Cebada':  {fill:'#1a1200',stroke:'#fbbf24'},
-              'Sorgo':   {fill:'#1a0500',stroke:'#ea580c'},
-              'Girasol': {fill:'#00101a',stroke:'#38bdf8'},
-              'Alfalfa': {fill:'#001a10',stroke:'#34d399'},
-            };
-            const cc = actual ? (cropColor[actual] ?? {fill:'#1a1a1a',stroke:'#444'}) : {fill:'#1a1a1a',stroke:'#444'};
+            const cc = cropColor(actual);
             return (
               <div key={l.id} className="aspect-square rounded-card flex flex-col relative overflow-hidden group bg-base-3 border border-base-5 transition-all duration-150 hover:-translate-y-1 hover:border-base-6">
 
@@ -245,8 +234,7 @@ export function ProductorDetail({ productor, campanas }: { productor: Productor;
                   <div>
                     <div className="flex flex-wrap gap-1 mb-1">
                       {cultivos.map((c,i)=>{
-                        const fill = HEX_COLOR[c??'']?.fill ?? '#333';
-                        const stroke = HEX_COLOR[c??'']?.stroke ?? '#555';
+                        const {fill, stroke} = cropColor(c??'');
                         const esActual = c===actual;
                         return(
                           <span key={c}
