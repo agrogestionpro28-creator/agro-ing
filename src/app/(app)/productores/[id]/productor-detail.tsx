@@ -71,10 +71,19 @@ export function ProductorDetail({ productor, campanas }: { productor: Productor;
   const [importando, setImportando] = useState(false);
   const [msg, setMsg] = useState('');
   const [confirmDelete, setConfirmDelete] = useState<{ id: string; nombre: string } | null>(null);
+  const [filtroCultivo, setFiltroCultivo] = useState<string>('');
   const fileRef = useRef<HTMLInputElement>(null);
 
   const campana = campanas.find((c) => c.id === campanaId);
   const totalHas = lotes.reduce((s, l) => s + Number(l.hectareas), 0);
+  // Cultivos únicos para filtro
+  const cultivosUnicos = Array.from(new Set(
+    lotes.flatMap(l => [l.cultivo, l.cultivo_2].filter(Boolean) as string[])
+  )).sort();
+  // Lotes filtrados
+  const lotesFiltrados = filtroCultivo
+    ? lotes.filter(l => l.cultivo === filtroCultivo || l.cultivo_2 === filtroCultivo)
+    : lotes;
 
   useEffect(() => { if (campanaId) fetchLotes(); }, [campanaId, productor.id]);
 
@@ -152,13 +161,38 @@ export function ProductorDetail({ productor, campanas }: { productor: Productor;
       </p>
 
       <div className="grid grid-cols-3 gap-3 mb-6">
-        <div className="card p-4"><div className="text-lo text-xs uppercase tracking-wider mb-1">Hectáreas</div><div className="text-green-400 font-black text-2xl">{Math.round(totalHas)} ha</div></div>
-        <div className="card p-4"><div className="text-lo text-xs uppercase tracking-wider mb-1">Lotes</div><div className="text-hi font-black text-2xl">{lotes.length}</div></div>
-        <div className="card p-4"><div className="text-lo text-xs uppercase tracking-wider mb-1">Campaña</div><div className="text-amber-400 font-bold text-lg">{campana?.nombre??'—'}</div></div>
+        <div className="card p-6 text-center"><div className="text-lo text-xs uppercase tracking-wider mb-2">Hectáreas</div><div className="text-green-400 font-black text-3xl">{Math.round(totalHas)} ha</div></div>
+        <div className="card p-6 text-center"><div className="text-lo text-xs uppercase tracking-wider mb-2">Lotes</div><div className="text-hi font-black text-3xl">{lotes.length}</div></div>
+        <div className="card p-6 text-center"><div className="text-lo text-xs uppercase tracking-wider mb-2">Campaña</div><div className="text-amber-400 font-bold text-2xl">{campana?.nombre??'—'}</div></div>
       </div>
 
-      <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
-        <h2 className="font-semibold text-hi">Lotes — Campaña {campana?.nombre}</h2>
+      <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
+          <h2 className="font-semibold text-hi">Lotes — Campaña {campana?.nombre}</h2>
+          {/* Filtros por cultivo */}
+          <div className="flex gap-1 flex-wrap">
+            <button
+              onClick={()=>setFiltroCultivo('')}
+              className={filtroCultivo===''
+                ? 'text-[10px] font-bold px-2 py-1 rounded bg-base-5 text-hi border border-base-6'
+                : 'text-[10px] font-bold px-2 py-1 rounded bg-base-3 text-lo border border-base-5 hover:border-base-6'}
+            >Todos</button>
+            {cultivosUnicos.map(c=>{
+              const {stroke} = cropColor(c);
+              const isActive = filtroCultivo===c;
+              return (
+                <button key={c} onClick={()=>setFiltroCultivo(c===filtroCultivo?'':c)}
+                  className="text-[10px] font-bold px-2 py-1 rounded border transition-all"
+                  style={{
+                    color: stroke,
+                    background: isActive ? stroke+'22' : 'transparent',
+                    borderColor: isActive ? stroke : '#333',
+                  }}
+                >{c}</button>
+              );
+            })}
+          </div>
+        </div>
         <div className="flex gap-2 flex-wrap">
           <button onClick={descargarPlantilla} className="btn-ghost text-xs py-1.5 px-3">↓ Plantilla</button>
           <button onClick={()=>fileRef.current?.click()} disabled={importando||!campanaId} className="btn-ghost text-xs py-1.5 px-3">
@@ -200,7 +234,7 @@ export function ProductorDetail({ productor, campanas }: { productor: Productor;
         </div>
       ):(
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-          {lotes.map((l)=>{
+          {lotesFiltrados.map((l)=>{
             const actual=getCultivoActual(l.cultivo,l.cultivo_2);
             const s=CROP_STYLES[actual??'']??DEFAULT_STYLE;
             const cultivos=[l.cultivo,l.cultivo_2].filter(Boolean);
