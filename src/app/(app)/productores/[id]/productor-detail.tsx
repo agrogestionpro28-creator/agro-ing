@@ -40,7 +40,11 @@ function cropColor(cultivo: string | null): { fill: string; stroke: string } {
   return { fill: '#1a1a1a', stroke: '#444444' };
 }
 
-function getCultivoActual(c1: string | null, c2: string | null) { return c2 || c1; }
+function getCultivoActual(c1: string | null, c2: string | null): string | null {
+  // Hemisferio sur: el cultivo actual es siempre el 1ro hasta que se coseche.
+  // El 2do cultivo (ej: soja 2da) se siembra DESPUÉS de cosechar el 1ro.
+  return c1 || c2;
+}
 
 function parseFecha(val: any): string | null {
   if (!val) return null;
