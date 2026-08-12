@@ -11,19 +11,19 @@ type Productor = { id: string; razon_social: string; cuit: string | null; locali
 type Campana = { id: string; nombre: string; fecha_inicio: string; fecha_fin: string };
 type Lote = { id: string; nombre: string; hectareas: number; cultivo: string | null; cultivo_2: string | null; variedad: string | null; fecha_siembra: string | null; notas: string | null };
 
-// Colores por cultivo
-const CROP: Record<string, { color: string; bg: string; border: string; glow: string }> = {
-  'Soja':     { color: '#22c55e', bg: '#052010', border: '#22c55e', glow: '0 0 16px rgba(34,197,94,0.35)' },
-  'Soja 2°':  { color: '#22c55e', bg: '#052010', border: '#22c55e', glow: '0 0 16px rgba(34,197,94,0.35)' },
-  'Maíz':     { color: '#84cc16', bg: '#0d1a00', border: '#84cc16', glow: '0 0 16px rgba(132,204,22,0.35)' },
-  'Maíz 1°':  { color: '#84cc16', bg: '#0d1a00', border: '#84cc16', glow: '0 0 16px rgba(132,204,22,0.35)' },
-  'Trigo':    { color: '#f59e0b', bg: '#1a0f00', border: '#f59e0b', glow: '0 0 16px rgba(245,158,11,0.35)' },
-  'Cebada':   { color: '#fbbf24', bg: '#1a1200', border: '#fbbf24', glow: '0 0 16px rgba(251,191,36,0.35)' },
-  'Sorgo':    { color: '#b45309', bg: '#1a0800', border: '#b45309', glow: '0 0 16px rgba(180,83,9,0.35)' },
-  'Girasol':  { color: '#38bdf8', bg: '#00101a', border: '#38bdf8', glow: '0 0 16px rgba(56,189,248,0.35)' },
-  'Alfalfa':  { color: '#34d399', bg: '#001a10', border: '#34d399', glow: '0 0 16px rgba(52,211,153,0.35)' },
+// Colores hardcodeados para que Tailwind los incluya siempre
+const CROP_STYLES: Record<string, { cardStyle: string; numColor: string; badgeStyle: string }> = {
+  'Soja':    { cardStyle: 'bg-green-950 border-green-500 shadow-[0_0_18px_rgba(34,197,94,0.4)]',    numColor: 'text-green-400',  badgeStyle: 'bg-green-900 text-green-400 border border-green-500' },
+  'Soja 2°': { cardStyle: 'bg-green-950 border-green-500 shadow-[0_0_18px_rgba(34,197,94,0.4)]',    numColor: 'text-green-400',  badgeStyle: 'bg-green-900 text-green-400 border border-green-500' },
+  'Maíz':    { cardStyle: 'bg-lime-950  border-lime-500  shadow-[0_0_18px_rgba(132,204,22,0.4)]',   numColor: 'text-lime-400',   badgeStyle: 'bg-lime-900 text-lime-400 border border-lime-500' },
+  'Maíz 1°': { cardStyle: 'bg-lime-950  border-lime-500  shadow-[0_0_18px_rgba(132,204,22,0.4)]',   numColor: 'text-lime-400',   badgeStyle: 'bg-lime-900 text-lime-400 border border-lime-500' },
+  'Trigo':   { cardStyle: 'bg-amber-950 border-amber-500 shadow-[0_0_18px_rgba(245,158,11,0.4)]',   numColor: 'text-amber-400',  badgeStyle: 'bg-amber-900 text-amber-400 border border-amber-500' },
+  'Cebada':  { cardStyle: 'bg-yellow-950 border-yellow-500 shadow-[0_0_18px_rgba(234,179,8,0.4)]',  numColor: 'text-yellow-400', badgeStyle: 'bg-yellow-900 text-yellow-400 border border-yellow-500' },
+  'Sorgo':   { cardStyle: 'bg-orange-950 border-orange-700 shadow-[0_0_18px_rgba(194,65,12,0.4)]',  numColor: 'text-orange-600', badgeStyle: 'bg-orange-950 text-orange-500 border border-orange-700' },
+  'Girasol': { cardStyle: 'bg-sky-950   border-sky-400   shadow-[0_0_18px_rgba(56,189,248,0.4)]',   numColor: 'text-sky-400',    badgeStyle: 'bg-sky-900 text-sky-400 border border-sky-400' },
+  'Alfalfa': { cardStyle: 'bg-teal-950  border-teal-500  shadow-[0_0_18px_rgba(20,184,166,0.4)]',   numColor: 'text-teal-400',   badgeStyle: 'bg-teal-900 text-teal-400 border border-teal-500' },
 };
-const DEFAULT_CROP = { color: '#525252', bg: '#111', border: '#333', glow: 'none' };
+const DEFAULT_STYLE = { cardStyle: 'bg-base-3 border-base-5', numColor: 'text-mid', badgeStyle: 'bg-base-4 text-lo border border-base-5' };
 
 function getCultivoActual(c1: string | null, c2: string | null) { return c2 || c1; }
 
@@ -51,7 +51,7 @@ export function ProductorDetail({ productor, campanas }: { productor: Productor;
   const [loading, setLoading] = useState(true);
   const [importando, setImportando] = useState(false);
   const [msg, setMsg] = useState('');
-  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<{ id: string; nombre: string } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const campana = campanas.find((c) => c.id === campanaId);
@@ -61,17 +61,15 @@ export function ProductorDetail({ productor, campanas }: { productor: Productor;
 
   async function fetchLotes() {
     setLoading(true);
-    const sb = createClient();
-    const { data } = await sb.from('lotes')
-      .select('id, nombre, hectareas, cultivo, cultivo_2, variedad, fecha_siembra, notas')
+    const { data } = await createClient().from('lotes')
+      .select('id,nombre,hectareas,cultivo,cultivo_2,variedad,fecha_siembra,notas')
       .eq('productor_id', productor.id).eq('campana_id', campanaId).order('nombre');
     setLotes(data ?? []);
     setLoading(false);
   }
 
   async function eliminarLote(id: string) {
-    const sb = createClient();
-    await sb.from('lotes').delete().eq('id', id);
+    await createClient().from('lotes').delete().eq('id', id);
     setConfirmDelete(null);
     await fetchLotes();
   }
@@ -79,208 +77,162 @@ export function ProductorDetail({ productor, campanas }: { productor: Productor;
   async function exportar() {
     await loadXLSX();
     const rows = [['Nombre','Hectáreas','Cultivo','2do Cultivo','Variedad','Fecha Siembra','Notas'],
-      ...lotes.map(l => [l.nombre, l.hectareas, l.cultivo??'', l.cultivo_2??'', l.variedad??'', l.fecha_siembra??'', l.notas??''])];
+      ...lotes.map(l=>[l.nombre,l.hectareas,l.cultivo??'',l.cultivo_2??'',l.variedad??'',l.fecha_siembra??'',l.notas??''])];
     const ws = XLSX.utils.aoa_to_sheet(rows);
-    ws['!cols'] = [{wch:20},{wch:10},{wch:12},{wch:12},{wch:15},{wch:14},{wch:30}];
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Lotes');
-    XLSX.writeFile(wb, `lotes-${productor.razon_social.replace(/\s/g,'-')}-${campana?.nombre??''}.xlsx`);
+    ws['!cols']=[{wch:20},{wch:10},{wch:12},{wch:12},{wch:15},{wch:14},{wch:30}];
+    const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'Lotes');
+    XLSX.writeFile(wb,`lotes-${productor.razon_social.replace(/\s/g,'-')}-${campana?.nombre??''}.xlsx`);
   }
 
   async function descargarPlantilla() {
     await loadXLSX();
-    const rows = [['Nombre','Hectáreas','Cultivo','2do Cultivo','Variedad','Fecha Siembra','Notas'],
-      ['Lote Norte',120.5,'Soja','','DM 4210','2026-11-01','Ejemplo'],
+    const rows=[['Nombre','Hectáreas','Cultivo','2do Cultivo','Variedad','Fecha Siembra','Notas'],
+      ['Lote Norte',120.5,'Soja','','DM 4210','2026-11-01',''],
       ['Lote Sur',85,'Trigo','Soja','Klein Tauro','2026-06-15','Doble cultivo']];
-    const ws = XLSX.utils.aoa_to_sheet(rows);
-    ws['!cols'] = [{wch:20},{wch:10},{wch:12},{wch:12},{wch:15},{wch:14},{wch:30}];
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Lotes');
-    XLSX.writeFile(wb, 'plantilla-lotes.xlsx');
+    const ws=XLSX.utils.aoa_to_sheet(rows); ws['!cols']=[{wch:20},{wch:10},{wch:12},{wch:12},{wch:15},{wch:14},{wch:30}];
+    const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'Lotes');
+    XLSX.writeFile(wb,'plantilla-lotes.xlsx');
   }
 
   async function importar(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]; if (!file) return;
+    const file=e.target.files?.[0]; if(!file) return;
     setImportando(true); setMsg('');
     try {
       await loadXLSX();
-      const buffer = await file.arrayBuffer();
-      const wb = XLSX.read(new Uint8Array(buffer), { type: 'array', cellDates: true });
-      const rows: any[] = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval: '' });
-      if (!rows.length) { setMsg('El archivo está vacío'); setImportando(false); return; }
-      const toInsert = rows
-        .filter(r => r['Nombre'] || r['nombre'])
-        .map(r => ({
-          productor_id: productor.id, campana_id: campanaId,
-          nombre: String(r['Nombre']||r['nombre']||'').trim(),
-          hectareas: parseFloat(String(r['Hectáreas']||r['Hectareas']||r['ha']||r['HA']||0))||0,
-          cultivo: String(r['Cultivo']||r['cultivo']||'').trim()||null,
-          cultivo_2: String(r['2do Cultivo']||r['cultivo_2']||'').trim()||null,
-          variedad: String(r['Variedad']||r['variedad']||'').trim()||null,
-          fecha_siembra: parseFecha(r['Fecha Siembra']||r['fecha_siembra']),
-          notas: String(r['Notas']||r['notas']||'').trim()||null,
-        })).filter(r => r.nombre && r.hectareas > 0);
-      if (!toInsert.length) { setMsg('No se encontraron filas válidas. Columnas: Nombre y Hectáreas obligatorias.'); setImportando(false); return; }
-      const { error } = await createClient().from('lotes').insert(toInsert);
-      if (error) setMsg('Error: ' + error.message);
-      else { setMsg(`✓ ${toInsert.length} lotes importados`); await fetchLotes(); }
-    } catch (err: any) { setMsg('Error: ' + err.message); }
+      const wb=XLSX.read(new Uint8Array(await file.arrayBuffer()),{type:'array',cellDates:true});
+      const rows:any[]=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{defval:''});
+      if(!rows.length){setMsg('El archivo está vacío');setImportando(false);return;}
+      const toInsert=rows.filter(r=>r['Nombre']||r['nombre']).map(r=>({
+        productor_id:productor.id, campana_id:campanaId,
+        nombre:String(r['Nombre']||r['nombre']||'').trim(),
+        hectareas:parseFloat(String(r['Hectáreas']||r['Hectareas']||r['ha']||r['HA']||0))||0,
+        cultivo:String(r['Cultivo']||r['cultivo']||'').trim()||null,
+        cultivo_2:String(r['2do Cultivo']||r['cultivo_2']||'').trim()||null,
+        variedad:String(r['Variedad']||r['variedad']||'').trim()||null,
+        fecha_siembra:parseFecha(r['Fecha Siembra']||r['fecha_siembra']),
+        notas:String(r['Notas']||r['notas']||'').trim()||null,
+      })).filter(r=>r.nombre&&r.hectareas>0);
+      if(!toInsert.length){setMsg('Sin filas válidas. Columnas: Nombre y Hectáreas obligatorias.');setImportando(false);return;}
+      const{error}=await createClient().from('lotes').insert(toInsert);
+      if(error) setMsg('Error: '+error.message);
+      else{setMsg(`✓ ${toInsert.length} lotes importados`);await fetchLotes();}
+    } catch(err:any){setMsg('Error: '+err.message);}
     setImportando(false);
-    if (fileRef.current) fileRef.current.value = '';
+    if(fileRef.current) fileRef.current.value='';
   }
 
   return (
     <div>
-      {/* Header */}
       <p className="eyebrow mb-1">Productor</p>
       <h1 className="text-2xl font-bold text-hi mb-1">{productor.razon_social}</h1>
       <p className="text-mid text-sm mb-6">
-        {[productor.cuit, productor.localidad, productor.telefono].filter(Boolean).join(' · ') || 'Sin datos adicionales'}
+        {[productor.cuit,productor.localidad,productor.telefono].filter(Boolean).join(' · ')||'Sin datos adicionales'}
       </p>
 
-      {/* Stats */}
       <div className="grid grid-cols-3 gap-3 mb-6">
-        {[
-          { label: 'Hectáreas', value: `${Math.round(totalHas)} ha`, color: '#22c55e' },
-          { label: 'Lotes', value: lotes.length, color: '#f5f5f5' },
-          { label: 'Campaña', value: campana?.nombre ?? '—', color: '#f59e0b' },
-        ].map(s => (
-          <div key={s.label} className="card p-4">
-            <div className="text-lo text-xs uppercase tracking-wider mb-1">{s.label}</div>
-            <div className="font-black text-2xl" style={{ color: s.color }}>{s.value}</div>
-          </div>
-        ))}
+        <div className="card p-4"><div className="text-lo text-xs uppercase tracking-wider mb-1">Hectáreas</div><div className="text-green-400 font-black text-2xl">{Math.round(totalHas)} ha</div></div>
+        <div className="card p-4"><div className="text-lo text-xs uppercase tracking-wider mb-1">Lotes</div><div className="text-hi font-black text-2xl">{lotes.length}</div></div>
+        <div className="card p-4"><div className="text-lo text-xs uppercase tracking-wider mb-1">Campaña</div><div className="text-amber-400 font-bold text-lg">{campana?.nombre??'—'}</div></div>
       </div>
 
-      {/* Toolbar */}
       <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
         <h2 className="font-semibold text-hi">Lotes — Campaña {campana?.nombre}</h2>
         <div className="flex gap-2 flex-wrap">
           <button onClick={descargarPlantilla} className="btn-ghost text-xs py-1.5 px-3">↓ Plantilla</button>
-          <button onClick={() => fileRef.current?.click()} disabled={importando || !campanaId} className="btn-ghost text-xs py-1.5 px-3">
-            {importando ? 'Importando…' : '↑ Importar Excel'}
+          <button onClick={()=>fileRef.current?.click()} disabled={importando||!campanaId} className="btn-ghost text-xs py-1.5 px-3">
+            {importando?'Importando…':'↑ Importar Excel'}
           </button>
-          <input ref={fileRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={importar} />
-          {lotes.length > 0 && <button onClick={exportar} className="btn-ghost text-xs py-1.5 px-3">↓ Exportar</button>}
+          <input ref={fileRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={importar}/>
+          {lotes.length>0&&<button onClick={exportar} className="btn-ghost text-xs py-1.5 px-3">↓ Exportar</button>}
           <Link href={`/productores/${productor.id}/lotes/nuevo`} className="btn-primary text-xs py-1.5 px-3">+ Nuevo lote</Link>
         </div>
       </div>
 
-      {msg && (
-        <p className={cn('text-xs rounded px-3 py-2 mb-4', msg.startsWith('✓') ? 'text-[#22c55e] bg-[#052010] border border-[#22c55e]/30' : 'text-red-400 bg-red-900/20 border border-red-900/40')}>
-          {msg}
-        </p>
-      )}
+      {msg&&<p className={cn('text-xs rounded px-3 py-2 mb-4',msg.startsWith('✓')?'text-green-400 bg-green-950 border border-green-800':'text-red-400 bg-red-950 border border-red-800')}>{msg}</p>}
 
-      {/* Modal confirmar eliminar */}
-      {confirmDelete && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
-          <div className="card p-6 max-w-sm w-full mx-4">
-            <h3 className="font-bold text-hi mb-2">¿Eliminar lote?</h3>
-            <p className="text-mid text-sm mb-5">
-              Esta acción no se puede deshacer. Se eliminará el lote y todos sus datos.
-            </p>
+      {/* Modal eliminar */}
+      {confirmDelete&&(
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 px-4">
+          <div className="card p-6 max-w-sm w-full">
+            <h3 className="font-bold text-hi mb-1">¿Eliminar lote?</h3>
+            <p className="text-mid text-sm mb-1"><span className="text-red-400 font-semibold">{confirmDelete.nombre}</span></p>
+            <p className="text-lo text-xs mb-5">Esta acción no se puede deshacer.</p>
             <div className="flex gap-3">
-              <button onClick={() => eliminarLote(confirmDelete)} className="btn-danger flex-1">Sí, eliminar</button>
-              <button onClick={() => setConfirmDelete(null)} className="btn-ghost flex-1">Cancelar</button>
+              <button onClick={()=>eliminarLote(confirmDelete.id)} className="btn-danger flex-1">Sí, eliminar</button>
+              <button onClick={()=>setConfirmDelete(null)} className="btn-ghost flex-1">Cancelar</button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Grid */}
-      {loading ? (
+      {loading?(
         <p className="text-mid text-sm">Cargando lotes…</p>
-      ) : lotes.length === 0 ? (
+      ):lotes.length===0?(
         <div className="card p-8 text-center">
           <p className="text-mid text-sm mb-2">No hay lotes para esta campaña.</p>
           <div className="flex gap-3 justify-center mt-4">
             <button onClick={descargarPlantilla} className="btn-ghost text-xs">↓ Plantilla</button>
-            <button onClick={() => fileRef.current?.click()} className="btn-ghost text-xs">↑ Importar</button>
+            <button onClick={()=>fileRef.current?.click()} className="btn-ghost text-xs">↑ Importar</button>
             <Link href={`/productores/${productor.id}/lotes/nuevo`} className="btn-primary text-xs">+ Nuevo lote</Link>
           </div>
         </div>
-      ) : (
+      ):(
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-          {lotes.map((l) => {
-            const actual = getCultivoActual(l.cultivo, l.cultivo_2);
-            const cfg = CROP[actual ?? ''] ?? DEFAULT_CROP;
-            const cultivos = [l.cultivo, l.cultivo_2].filter(Boolean);
-
+          {lotes.map((l)=>{
+            const actual=getCultivoActual(l.cultivo,l.cultivo_2);
+            const s=CROP_STYLES[actual??'']??DEFAULT_STYLE;
+            const cultivos=[l.cultivo,l.cultivo_2].filter(Boolean);
             return (
-              <div
-                key={l.id}
-                className="aspect-square rounded-card flex flex-col relative overflow-hidden group"
-                style={{ background: cfg.bg, border: `1.5px solid ${cfg.border}`, boxShadow: cfg.glow }}
-              >
-                {/* Panal */}
-                <svg className="absolute top-0 right-0 opacity-20 w-16 h-14 pointer-events-none" viewBox="0 0 60 52">
-                  <polygon points="15,0 45,0 60,26 45,52 15,52 0,26" fill="none" stroke={cfg.color} strokeWidth="1.5"/>
+              <div key={l.id} className={cn('aspect-square rounded-card flex flex-col relative overflow-hidden group border-2 transition-all duration-150 hover:-translate-y-1', s.cardStyle)}>
+                
+                {/* Panal SVG */}
+                <svg className="absolute top-0 right-0 w-16 h-14 opacity-20 pointer-events-none" viewBox="0 0 60 52">
+                  <polygon points="15,0 45,0 60,26 45,52 15,52 0,26" fill="none" stroke="currentColor" strokeWidth="1.5" className={s.numColor}/>
                 </svg>
 
-                {/* Botón eliminar */}
-                <button
-                  onClick={() => setConfirmDelete(l.id)}
-                  className="absolute top-2 left-2 w-5 h-5 rounded-full bg-black/60 text-red-500 text-xs opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center hover:bg-red-900/60"
-                  title="Eliminar lote"
-                >
-                  ×
-                </button>
-
-                {/* Link al detalle del lote */}
-                <Link href={`/productores/${productor.id}/lotes/${l.id}`} className="flex flex-col justify-between h-full p-3">
+                {/* Link al detalle */}
+                <Link href={`/productores/${productor.id}/lotes/${l.id}`} className="flex flex-col justify-between h-full p-3 pb-8">
                   {/* Nombre */}
                   <div>
                     <p className="text-hi font-bold text-sm leading-tight line-clamp-2">{l.nombre}</p>
-                    {l.variedad && <p className="text-[10px] mt-0.5 truncate" style={{ color: cfg.color, opacity: 0.7 }}>{l.variedad}</p>}
+                    {l.variedad&&<p className={cn('text-[10px] mt-0.5 truncate opacity-70',s.numColor)}>{l.variedad}</p>}
                   </div>
 
                   {/* Has centradas */}
-                  <div className="flex items-baseline justify-center gap-1.5 my-2">
-                    <span className="font-black text-4xl tabular-nums leading-none" style={{ color: cfg.color }}>
-                      {l.hectareas}
-                    </span>
-                    <span className="font-bold text-sm" style={{ color: cfg.color }}>ha</span>
+                  <div className="flex items-baseline justify-center gap-1.5">
+                    <span className={cn('font-black text-4xl tabular-nums leading-none',s.numColor)}>{l.hectareas}</span>
+                    <span className={cn('font-bold text-sm',s.numColor)}>ha</span>
                   </div>
 
-                  {/* Cultivos + fecha */}
+                  {/* Cultivos */}
                   <div>
                     <div className="flex flex-wrap gap-1 mb-1">
-                      {cultivos.map((c, i) => {
-                        const ccfg = CROP[c ?? ''] ?? DEFAULT_CROP;
-                        const esActual = c === actual;
-                        return (
-                          <span
-                            key={c}
-                            className="text-[9px] font-bold px-1.5 py-0.5 rounded"
-                            style={{
-                              color: ccfg.color,
-                              background: esActual ? `${ccfg.color}22` : 'rgba(255,255,255,0.05)',
-                              border: `1px solid ${esActual ? ccfg.color : 'transparent'}`,
-                              opacity: esActual ? 1 : 0.5,
-                            }}
-                          >
-                            {c}{cultivos.length > 1 ? (i === 0 ? ' 1°' : ' 2°') : ''}
+                      {cultivos.map((c,i)=>{
+                        const cs=CROP_STYLES[c??'']??DEFAULT_STYLE;
+                        return(
+                          <span key={c} className={cn('text-[9px] font-bold px-1.5 py-0.5 rounded', c===actual?cs.badgeStyle:'bg-black/30 text-lo border border-base-5 opacity-60')}>
+                            {c}{cultivos.length>1?(i===0?' 1°':' 2°'):''}
                           </span>
                         );
                       })}
                     </div>
-                    {l.fecha_siembra && (
-                      <div className="font-mono text-[9px]" style={{ color: cfg.color, opacity: 0.6 }}>
-                        Siem: {l.fecha_siembra}
-                      </div>
-                    )}
+                    {l.fecha_siembra&&<div className={cn('font-mono text-[9px] opacity-60',s.numColor)}>Siem: {l.fecha_siembra}</div>}
                   </div>
                 </Link>
+
+                {/* Botón eliminar — abajo derecha, visible en hover */}
+                <button
+                  onClick={()=>setConfirmDelete({id:l.id,nombre:l.nombre})}
+                  className="absolute bottom-2 right-2 w-7 h-7 rounded-full bg-black/60 border border-red-800 text-red-500 opacity-0 group-hover:opacity-100 transition-all hover:bg-red-600 hover:text-white hover:border-red-600 flex items-center justify-center text-base leading-none"
+                  title="Eliminar lote"
+                >
+                  🗑
+                </button>
               </div>
             );
           })}
 
-          {/* + Nuevo */}
-          <Link
-            href={`/productores/${productor.id}/lotes/nuevo`}
-            className="aspect-square rounded-card flex items-center justify-center border-dashed border border-base-5 hover:border-ochre hover:text-ochre text-lo transition-all group"
-          >
+          <Link href={`/productores/${productor.id}/lotes/nuevo`} className="aspect-square rounded-card flex items-center justify-center border-2 border-dashed border-base-5 hover:border-amber-500 hover:text-amber-500 text-lo transition-all group">
             <div className="text-center">
               <div className="text-4xl font-thin mb-1 group-hover:scale-110 transition-transform">+</div>
               <div className="text-[10px] uppercase tracking-wider">Nuevo lote</div>
