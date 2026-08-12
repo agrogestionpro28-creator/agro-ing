@@ -252,7 +252,7 @@ export function ProductorDetail({ productor, campanas }: { productor: Productor;
                               border: `1px solid ${esActual ? stroke : '#333'}`,
                             }}
                           >
-                            {c}{cultivos.length>1?(i===0?' 1°':' 2°'):''}
+                            {c}{cultivos.length>1 && !String(c).includes('°') ?(i===0?' 1°':' 2°'):''}
                           </span>
                         );
                       })}
