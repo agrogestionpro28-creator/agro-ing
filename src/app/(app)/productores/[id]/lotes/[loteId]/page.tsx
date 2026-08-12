@@ -9,23 +9,26 @@ export default async function LoteDetailPage({ params }: { params: Promise<{ id:
   const { data: lote } = await sb.from('lotes').select('*').eq('id', loteId).single();
   if (!lote) notFound();
 
+  // Hemisferio sur: el cultivo actual es el 1ro hasta cosecha
+  const cultivoActual = lote.cultivo || lote.cultivo_2 || '—';
+
   return (
     <div className="max-w-2xl">
       <p className="eyebrow mb-1">Lote</p>
       <h1 className="text-2xl font-bold text-hi mb-1">{lote.nombre}</h1>
       <p className="text-mid text-sm mb-6">
-        {lote.hectareas} ha · {[lote.cultivo, lote.cultivo_2].filter(Boolean).join(' / ') || 'Sin cultivo'}
+        {lote.hectareas} ha · {[lote.cultivo, lote.cultivo_2].filter(Boolean).join(' → ') || 'Sin cultivo'}
         {lote.variedad ? ` · ${lote.variedad}` : ''}
       </p>
 
       <div className="grid grid-cols-2 gap-3 mb-6">
         <div className="card p-4">
           <div className="text-lo text-xs uppercase tracking-wider mb-1">Hectáreas</div>
-          <div className="text-[#22c55e] font-black text-2xl">{lote.hectareas} ha</div>
+          <div className="text-green-400 font-black text-2xl">{lote.hectareas} ha</div>
         </div>
         <div className="card p-4">
           <div className="text-lo text-xs uppercase tracking-wider mb-1">Cultivo actual</div>
-          <div className="text-hi font-bold text-xl">{lote.cultivo_2 || lote.cultivo || '—'}</div>
+          <div className="text-hi font-bold text-xl">{cultivoActual}</div>
         </div>
         {lote.fecha_siembra && (
           <div className="card p-4">
@@ -36,7 +39,7 @@ export default async function LoteDetailPage({ params }: { params: Promise<{ id:
         {lote.cultivo && lote.cultivo_2 && (
           <div className="card p-4">
             <div className="text-lo text-xs uppercase tracking-wider mb-1">Doble cultivo</div>
-            <div className="text-ochre font-bold">{lote.cultivo} → {lote.cultivo_2}</div>
+            <div className="text-ochre font-bold">{lote.cultivo} → {lote.cultivo_2} (próximo)</div>
           </div>
         )}
       </div>
