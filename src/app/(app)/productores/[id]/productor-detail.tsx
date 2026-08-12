@@ -25,6 +25,20 @@ const CROP_STYLES: Record<string, { cardStyle: string; numColor: string; badgeSt
 };
 const DEFAULT_STYLE = { cardStyle: 'bg-base-3 border-base-5', numColor: 'text-mid', badgeStyle: 'bg-base-4 text-lo border border-base-5' };
 
+
+// Colores SVG reales por cultivo (fill + stroke para hexágono, bar para barra superior)
+const HEX_COLOR: Record<string, { fill: string; stroke: string; bar: string }> = {
+  'Soja':     { fill: '#052010', stroke: '#22c55e', bar: 'bg-green-500' },
+  'Soja 2°':  { fill: '#052010', stroke: '#22c55e', bar: 'bg-green-500' },
+  'Maíz':     { fill: '#0d1a00', stroke: '#84cc16', bar: 'bg-lime-500' },
+  'Maíz 1°':  { fill: '#0d1a00', stroke: '#84cc16', bar: 'bg-lime-500' },
+  'Trigo':    { fill: '#1a0f00', stroke: '#f59e0b', bar: 'bg-amber-500' },
+  'Cebada':   { fill: '#1a1200', stroke: '#fbbf24', bar: 'bg-yellow-400' },
+  'Sorgo':    { fill: '#1a0800', stroke: '#c2410c', bar: 'bg-orange-700' },
+  'Girasol':  { fill: '#00101a', stroke: '#38bdf8', bar: 'bg-sky-400' },
+  'Alfalfa':  { fill: '#001a10', stroke: '#34d399', bar: 'bg-teal-400' },
+};
+
 function getCultivoActual(c1: string | null, c2: string | null) { return c2 || c1; }
 
 function parseFecha(val: any): string | null {
@@ -183,47 +197,65 @@ export function ProductorDetail({ productor, campanas }: { productor: Productor;
             const s=CROP_STYLES[actual??'']??DEFAULT_STYLE;
             const cultivos=[l.cultivo,l.cultivo_2].filter(Boolean);
             return (
-              <div key={l.id} className={cn('aspect-square rounded-card flex flex-col relative overflow-hidden group border-2 transition-all duration-150 hover:-translate-y-1', s.cardStyle)}>
-                
-                {/* Panal SVG */}
-                <svg className="absolute top-0 right-0 w-16 h-14 opacity-20 pointer-events-none" viewBox="0 0 60 52">
-                  <polygon points="15,0 45,0 60,26 45,52 15,52 0,26" fill="none" stroke="currentColor" strokeWidth="1.5" className={s.numColor}/>
-                </svg>
+              <div key={l.id} className="aspect-square rounded-card flex flex-col relative overflow-hidden group bg-base-3 border border-base-5 transition-all duration-150 hover:-translate-y-1 hover:border-base-6">
+
+                {/* Barra de color arriba — acento del cultivo */}
+                <div className={cn('h-1 w-full', HEX_COLOR[actual??'']?.bar ?? 'bg-base-5')} />
+
+                {/* Hexágono de color del cultivo — esquina superior derecha */}
+                <div className="absolute top-3 right-3 pointer-events-none">
+                  <svg width="32" height="28" viewBox="0 0 60 52">
+                    <polygon points="15,0 45,0 60,26 45,52 15,52 0,26"
+                      fill={HEX_COLOR[actual??'']?.fill ?? '#222'}
+                      stroke={HEX_COLOR[actual??'']?.stroke ?? '#444'}
+                      strokeWidth="3"
+                    />
+                  </svg>
+                </div>
 
                 {/* Link al detalle */}
-                <Link href={`/productores/${productor.id}/lotes/${l.id}`} className="flex flex-col justify-between h-full p-3 pb-8">
-                  {/* Nombre */}
+                <Link href={`/productores/${productor.id}/lotes/${l.id}`} className="flex flex-col justify-between flex-1 p-3 pb-8">
+                  {/* Nombre con acento de color */}
                   <div>
-                    <p className="text-hi font-bold text-sm leading-tight line-clamp-2">{l.nombre}</p>
-                    {l.variedad&&<p className={cn('text-[10px] mt-0.5 truncate opacity-70',s.numColor)}>{l.variedad}</p>}
+                    <p className="text-hi font-bold text-sm leading-tight line-clamp-2 pr-8">{l.nombre}</p>
+                    {l.variedad&&<p className="text-[10px] mt-0.5 truncate text-lo">{l.variedad}</p>}
                   </div>
 
                   {/* Has centradas */}
                   <div className="flex items-baseline justify-center gap-1.5">
-                    <span className={cn('font-black text-4xl tabular-nums leading-none',s.numColor)}>{l.hectareas}</span>
-                    <span className={cn('font-bold text-sm',s.numColor)}>ha</span>
+                    <span className="text-hi font-black text-4xl tabular-nums leading-none">{l.hectareas}</span>
+                    <span className="text-mid font-bold text-sm">ha</span>
                   </div>
 
-                  {/* Cultivos */}
+                  {/* Cultivos + fecha */}
                   <div>
                     <div className="flex flex-wrap gap-1 mb-1">
                       {cultivos.map((c,i)=>{
-                        const cs=CROP_STYLES[c??'']??DEFAULT_STYLE;
+                        const fill = HEX_COLOR[c??'']?.fill ?? '#333';
+                        const stroke = HEX_COLOR[c??'']?.stroke ?? '#555';
+                        const esActual = c===actual;
                         return(
-                          <span key={c} className={cn('text-[9px] font-bold px-1.5 py-0.5 rounded', c===actual?cs.badgeStyle:'bg-black/30 text-lo border border-base-5 opacity-60')}>
+                          <span key={c}
+                            className="text-[9px] font-bold px-1.5 py-0.5 rounded flex items-center gap-1"
+                            style={{
+                              background: esActual ? fill+'33' : 'rgba(255,255,255,0.04)',
+                              color: esActual ? stroke : '#525252',
+                              border: `1px solid ${esActual ? stroke : '#333'}`,
+                            }}
+                          >
                             {c}{cultivos.length>1?(i===0?' 1°':' 2°'):''}
                           </span>
                         );
                       })}
                     </div>
-                    {l.fecha_siembra&&<div className={cn('font-mono text-[9px] opacity-60',s.numColor)}>Siem: {l.fecha_siembra}</div>}
+                    {l.fecha_siembra&&<div className="font-mono text-[9px] text-lo">Siem: {l.fecha_siembra}</div>}
                   </div>
                 </Link>
 
-                {/* Botón eliminar — abajo derecha, visible en hover */}
+                {/* Tacho eliminar — abajo derecha */}
                 <button
                   onClick={()=>setConfirmDelete({id:l.id,nombre:l.nombre})}
-                  className="absolute bottom-2 right-2 w-7 h-7 rounded-full bg-black/60 border border-red-800 text-red-500 opacity-0 group-hover:opacity-100 transition-all hover:bg-red-600 hover:text-white hover:border-red-600 flex items-center justify-center text-base leading-none"
+                  className="absolute bottom-2 right-2 w-7 h-7 rounded-full bg-black/60 border border-red-800 text-red-500 opacity-0 group-hover:opacity-100 transition-all hover:bg-red-600 hover:text-white hover:border-red-600 flex items-center justify-center text-sm"
                   title="Eliminar lote"
                 >
                   🗑
