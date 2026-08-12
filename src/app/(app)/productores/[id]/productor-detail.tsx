@@ -199,16 +199,17 @@ export function ProductorDetail({ productor, campanas }: { productor: Productor;
             return (
               <div key={l.id} className="aspect-square rounded-card flex flex-col relative overflow-hidden group bg-base-3 border border-base-5 transition-all duration-150 hover:-translate-y-1 hover:border-base-6">
 
-                {/* Barra de color arriba — acento del cultivo */}
-                <div className={cn('h-1 w-full', HEX_COLOR[actual??'']?.bar ?? 'bg-base-5')} />
+                {/* Barra de color arriba */}
+                <div style={{ height: 4, background: HEX_COLOR[actual??'']?.stroke ?? '#333', width: '100%' }} />
 
-                {/* Hexágono de color del cultivo — esquina superior derecha */}
-                <div className="absolute top-3 right-3 pointer-events-none">
-                  <svg width="32" height="28" viewBox="0 0 60 52">
-                    <polygon points="15,0 45,0 60,26 45,52 15,52 0,26"
-                      fill={HEX_COLOR[actual??'']?.fill ?? '#222'}
-                      stroke={HEX_COLOR[actual??'']?.stroke ?? '#444'}
-                      strokeWidth="3"
+                {/* Hexágono grande con color del cultivo */}
+                <div className="absolute top-2 right-2 pointer-events-none">
+                  <svg width="52" height="46" viewBox="0 0 60 52">
+                    <polygon
+                      points="15,0 45,0 60,26 45,52 15,52 0,26"
+                      fill={HEX_COLOR[actual??'']?.fill ?? '#1a1a1a'}
+                      stroke={HEX_COLOR[actual??'']?.stroke ?? '#333'}
+                      strokeWidth="4"
                     />
                   </svg>
                 </div>
