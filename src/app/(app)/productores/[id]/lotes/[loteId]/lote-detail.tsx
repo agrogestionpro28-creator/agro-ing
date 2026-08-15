@@ -22,7 +22,7 @@ function cropColor(c: string | null) {
 
 type Lote = { id:string; productor_id:string; campana_id:string; nombre:string; hectareas:number; cultivo:string|null; cultivo_2:string|null; variedad:string|null; fecha_siembra:string|null; notas:string|null };
 type LoteSimple = { id:string; nombre:string; hectareas:number; cultivo:string|null };
-type Aplicacion = { id:string; lote_id:string; fecha:string; tipo:string; productos:string|null; maquinaria:string; propio_alq:string; contratista:string|null; costo_ha:number|null; hectareas_apl:number|null; observaciones:string|null };
+type Aplicacion = { id:string; lote_id:string; fecha:string; tipo:string; productos:string|null; maquinaria:string; propio_alq:string; contratista:string|null; costo_ha:number|null; hectareas_apl:number|null; observaciones:string|null; imagen_url:string|null };
 type Ingeniero = { nombre:string; apellido:string|null; matricula:string|null; telefono:string|null };
 
 const APL_VACIO = { fecha:new Date().toISOString().slice(0,10), tipo:'Herbicida', productos:'', maquinaria:'M', propio_alq:'Propio', contratista:'', costo_ha:'', hectareas_apl:'', observaciones:'' };
@@ -464,8 +464,10 @@ export function LoteDetail({ lote:initial, productorId, productorNombre, ingenie
                         {a.observaciones && <p className="text-lo text-xs mt-1 italic">{a.observaciones}</p>}
                       </div>
                       <div className="flex gap-2 items-center opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button onClick={()=>generarImagen(a)} title="Descargar imagen" className="text-ochre hover:text-ochre-light text-lg">⬇</button>
-                        <button onClick={()=>compartirWhatsApp(a)} title="Compartir WhatsApp" className="text-afa hover:text-afa-light text-lg">📤</button>
+                        {a.imagen_url ? (
+                          <a href={a.imagen_url} target="_blank" download title="Ver/Descargar imagen"
+                            className="text-ochre hover:text-ochre-light text-lg">⬇</a>
+                        ) : null}
                         <button onClick={()=>eliminarAplicacion(a.id)} title="Eliminar" className="text-red-500 hover:text-red-400 text-lg">🗑</button>
                       </div>
                     </div>
