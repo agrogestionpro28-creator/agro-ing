@@ -237,10 +237,10 @@ export function LoteDetail({ lote: initial, productorId }: { lote: Lote; product
 
               <div>
                 <label className="block text-xs font-semibold text-mid mb-1 uppercase tracking-wider">
-                  Costo por ha ($/ha)
+                  Costo de aplicación (U$S/ha)
                   {aplForm.costo_ha && aplForm.hectareas_apl &&
                     <span className="ml-2 text-ochre normal-case tracking-normal">
-                      = ${(parseFloat(aplForm.costo_ha)*parseFloat(aplForm.hectareas_apl)).toLocaleString('es-AR')} total
+                      = U$S {(parseFloat(aplForm.costo_ha)*parseFloat(aplForm.hectareas_apl)).toLocaleString('es-AR')} total
                     </span>
                   }
                 </label>
@@ -282,7 +282,7 @@ export function LoteDetail({ lote: initial, productorId }: { lote: Lote; product
                           {a.hectareas_apl && <span className="text-[10px] text-lo">{a.hectareas_apl} ha</span>}
                           {costoTotal && (
                             <span className="text-[10px] font-bold text-afa">
-                              ${costoTotal.toLocaleString('es-AR')} total
+                              U$S {costoTotal.toLocaleString('es-AR')} total
                             </span>
                           )}
                         </div>
