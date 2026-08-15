@@ -45,6 +45,10 @@ export function LoteDetail({ lote:initial, productorId, productorNombre, ingenie
   const [aplForm, setAplForm] = useState({...APL_VACIO, hectareas_apl:String(initial.hectareas)});
   const [form, setForm] = useState({ nombre:initial.nombre, hectareas:String(initial.hectareas), cultivo:initial.cultivo??'', cultivo_2:initial.cultivo_2??'', variedad:initial.variedad??'', fecha_siembra:initial.fecha_siembra??'', notas:initial.notas??'' });
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [showAplForm2, setShowAplForm2] = useState(false);
+  const [aplForm2, setAplForm2] = useState({ fecha: new Date().toISOString().slice(0,10), tipo: 'Herbicida', productos: '', maquinaria: 'M', propio_alq: 'Propio', contratista: '', costo_ha: '', observaciones: '' });
+  const [savingApl2, setSavingApl2] = useState(false);
+  const [errApl2, setErrApl2] = useState('');
 
   const cultivoActual = lote.cultivo || lote.cultivo_2;
   const color = cropColor(cultivoActual??null);
