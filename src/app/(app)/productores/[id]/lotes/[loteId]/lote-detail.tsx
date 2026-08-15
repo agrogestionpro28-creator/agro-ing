@@ -21,9 +21,9 @@ function cropColor(c: string | null) {
 }
 
 type Lote = { id:string; productor_id:string; campana_id:string; nombre:string; hectareas:number; cultivo:string|null; cultivo_2:string|null; variedad:string|null; fecha_siembra:string|null; notas:string|null };
-type Aplicacion = { id:string; lote_id:string; fecha:string; tipo:string; productos:string|null; maquinaria:string; propio_alq:string; costo_ha:number|null; hectareas_apl:number|null; observaciones:string|null; created_at:string };
+type Aplicacion = { id:string; lote_id:string; fecha:string; tipo:string; productos:string|null; maquinaria:string; propio_alq:string; contratista:string|null; costo_ha:number|null; hectareas_apl:number|null; observaciones:string|null; created_at:string };
 
-const APL_VACIO = { fecha: new Date().toISOString().slice(0,10), tipo:'Herbicida', productos:'', maquinaria:'M', propio_alq:'Propio', costo_ha:'', hectareas_apl:'', observaciones:'' };
+const APL_VACIO = { fecha: new Date().toISOString().slice(0,10), tipo:'Herbicida', productos:'', maquinaria:'M', propio_alq:'Propio', contratista:'', costo_ha:'', hectareas_apl:'', observaciones:'' };
 
 export function LoteDetail({ lote: initial, productorId }: { lote: Lote; productorId: string }) {
   const [lote, setLote] = useState(initial);
@@ -71,7 +71,7 @@ export function LoteDetail({ lote: initial, productorId }: { lote: Lote; product
     const { error } = await (createClient() as any).from('aplicaciones').insert({
       lote_id: lote.id, fecha: aplForm.fecha, tipo: aplForm.tipo,
       productos: aplForm.productos||null, maquinaria: aplForm.maquinaria,
-      propio_alq: aplForm.propio_alq, costo_ha: costoHa,
+      propio_alq: aplForm.propio_alq, contratista: aplForm.contratista.trim()||null, costo_ha: costoHa,
       hectareas_apl: hasApl, observaciones: aplForm.observaciones||null,
     });
     setSavingApl(false);
@@ -237,6 +237,15 @@ export function LoteDetail({ lote: initial, productorId }: { lote: Lote; product
 
               <div>
                 <label className="block text-xs font-semibold text-mid mb-1 uppercase tracking-wider">
+                  Contratista <span className="text-lo normal-case tracking-normal font-normal">(opcional)</span>
+                </label>
+                <input value={aplForm.contratista}
+                  onChange={e=>setAplForm(f=>({...f,contratista:e.target.value}))}
+                  className="field" placeholder="Ej: Pérez Aplicaciones" />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-mid mb-1 uppercase tracking-wider">
                   Costo de aplicación (U$S/ha)
                   {aplForm.costo_ha && aplForm.hectareas_apl &&
                     <span className="ml-2 text-ochre normal-case tracking-normal">
@@ -280,6 +289,7 @@ export function LoteDetail({ lote: initial, productorId }: { lote: Lote; product
                           <span className="text-[10px] text-lo">{maqLabel[a.maquinaria]??a.maquinaria}</span>
                           <span className="text-[10px] text-lo">{a.propio_alq}</span>
                           {a.hectareas_apl && <span className="text-[10px] text-lo">{a.hectareas_apl} ha</span>}
+                          {a.contratista && <span className="text-[10px] text-mid">· {a.contratista}</span>}
                           {costoTotal && (
                             <span className="text-[10px] font-bold text-afa">
                               U$S {costoTotal.toLocaleString('es-AR')} total
@@ -289,11 +299,13 @@ export function LoteDetail({ lote: initial, productorId }: { lote: Lote; product
                         {a.productos && <p className="text-hi text-sm">{a.productos}</p>}
                         {a.observaciones && <p className="text-lo text-xs mt-1 italic">{a.observaciones}</p>}
                       </div>
-                      <button
-                        onClick={()=>eliminarAplicacion(a.id)}
-                        className="text-red-500 opacity-0 group-hover:opacity-100 transition-opacity text-lg hover:text-red-400"
-                        title="Eliminar"
-                      >🗑</button>
+                      <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button
+                          onClick={()=>eliminarAplicacion(a.id)}
+                          className="text-red-500 text-lg hover:text-red-400"
+                          title="Eliminar"
+                        >🗑</button>
+                      </div>
                     </div>
                   </div>
                 );
