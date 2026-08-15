@@ -229,11 +229,13 @@ export function ProductorDetail({ productor, campanas, ingeniero }:{ productor:P
     lotesInfo.forEach(l=>{
       totalHasApl+=l.hectareas;
       const lc=cropColor(l.cultivo);
+      // Nombre en línea 1
       ctx.fillStyle=lc; ctx.font='bold 13px Inter,sans-serif';
       ctx.fillText(`▸ ${l.nombre}`,28,y);
+      // Ha y cultivo en línea 2
       ctx.fillStyle='#a3a3a3'; ctx.font='11px Inter,sans-serif';
-      ctx.fillText(`${l.hectareas} ha${l.cultivo?' · '+l.cultivo:''}`,28+ctx.measureText(`▸ ${l.nombre}`).width+12,y);
-      y+=22;
+      ctx.fillText(`   ${l.hectareas} ha${l.cultivo?' · '+l.cultivo:''}`,28,y+15);
+      y+=34;
     });
 
     // Footer
