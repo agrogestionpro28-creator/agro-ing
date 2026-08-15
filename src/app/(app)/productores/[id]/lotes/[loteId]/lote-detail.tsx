@@ -4,6 +4,11 @@ import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { cn } from '@/lib/utils';
 
+function fmtFecha(iso: string): string {
+  const [y, m, d] = iso.split('-');
+  return `${d}/${m}/${y}`;
+}
+
 const CULTIVOS = ['Soja','Maíz','Trigo','Girasol','Sorgo','Cebada','Alfalfa','Otro'];
 const TIPOS_APL = ['Herbicida','Fungicida','Insecticida','Fertilizante','Fungicida+Insecticida','Otro'];
 
@@ -284,6 +289,141 @@ export function LoteDetail({ lote:initial, productorId, productorNombre, ingenie
     }, 100);
   }
 
+  function dibujarCanvasLote(canvas: HTMLCanvasElement, form: typeof aplForm2) {
+    const prods = form.productos || '—';
+    const W = 900;
+    const tmpC = document.createElement('canvas');
+    const tmpX = tmpC.getContext('2d')!;
+    tmpX.font = 'bold 17px Inter,sans-serif';
+    const pWords = prods.split(' '); let pLine = ''; const pLines: string[] = [];
+    for (const w of pWords) {
+      const test = pLine + w + ' ';
+      if (tmpX.measureText(test).width > W - 80 && pLine) { pLines.push(pLine.trim()); pLine = w + ' '; }
+      else pLine = test;
+    }
+    if (pLine.trim()) pLines.push(pLine.trim());
+    const prodBlockH = 22 + pLines.length * 26 + 18;
+    const H = Math.max(420, 100 + prodBlockH + 120);
+    canvas.width = W; canvas.height = H;
+    const ctx = canvas.getContext('2d')!;
+
+    ctx.fillStyle = '#0a0a0a'; ctx.fillRect(0, 0, W, H);
+    ctx.strokeStyle = 'rgba(245,158,11,0.07)'; ctx.lineWidth = 1;
+    for (let row = 0; row < 25; row++) for (let col = 0; col < 20; col++) {
+      const ox = col*54+(row%2===0?0:27), oy = row*36-18;
+      ctx.beginPath();
+      [[27,0],[54,18],[54,36],[27,54],[0,36],[0,18]].forEach(([x,y],i) => i===0?ctx.moveTo(ox+x,oy+y):ctx.lineTo(ox+x,oy+y));
+      ctx.closePath(); ctx.stroke();
+    }
+    const g = ctx.createLinearGradient(0,0,0,H);
+    g.addColorStop(0,'#2EAA6E'); g.addColorStop(1,'#0d2818');
+    ctx.fillStyle = g; ctx.fillRect(0,0,7,H);
+
+    ctx.fillStyle = 'rgba(12,12,12,0.97)'; ctx.fillRect(7,0,W-7,98);
+    ctx.strokeStyle = 'rgba(245,158,11,0.4)'; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(7,98); ctx.lineTo(W,98); ctx.stroke();
+
+    ctx.fillStyle = '#f59e0b'; ctx.font = 'bold 10px Inter,sans-serif';
+    ctx.letterSpacing = '4px'; ctx.fillText('ORDEN DE APLICACIÓN',28,26); ctx.letterSpacing = '0';
+    ctx.fillStyle = '#ffffff'; ctx.font = 'bold 36px Inter,sans-serif';
+    ctx.fillText(form.tipo.toUpperCase(),28,72);
+    ctx.fillStyle = '#777'; ctx.font = 'bold 13px Inter,sans-serif';
+    ctx.fillText(productorNombre.toUpperCase(),28,93);
+
+    const maqT = form.maquinaria==='M'?'Mosquito':form.maquinaria==='D'?'Dron':'Avión';
+    ctx.textAlign = 'right';
+    ctx.fillStyle = '#f59e0b'; ctx.font = 'bold 28px Inter,sans-serif';
+    ctx.fillText(fmtFecha(form.fecha),W-28,46);
+    ctx.fillStyle = '#a3a3a3'; ctx.font = '14px Inter,sans-serif';
+    ctx.fillText(`${maqT} · ${form.propio_alq}${form.contratista?' · '+form.contratista.toUpperCase():''}`,W-28,70);
+    ctx.textAlign = 'left';
+
+    let y = 98;
+    ctx.fillStyle = '#0f3320'; ctx.fillRect(7,y,W-7,prodBlockH);
+    ctx.strokeStyle = '#2EAA6E'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(7,y+prodBlockH); ctx.lineTo(W,y+prodBlockH); ctx.stroke();
+    y += 18;
+    ctx.fillStyle = '#2EAA6E'; ctx.font = 'bold 9px Inter,sans-serif';
+    ctx.letterSpacing = '3px'; ctx.fillText('PRODUCTOS Y DOSIS',28,y); ctx.letterSpacing = '0';
+    y += 22;
+    ctx.fillStyle = '#ffffff'; ctx.font = 'bold 17px Inter,sans-serif';
+    pLines.forEach(l => { ctx.fillText(l,28,y); y += 26; });
+    y += 20;
+
+    ctx.fillStyle = '#444'; ctx.font = 'bold 9px Inter,sans-serif';
+    ctx.letterSpacing = '3px'; ctx.fillText('LOTE',28,y); ctx.letterSpacing = '0';
+    y += 20;
+    const lc = cropColor(lote.cultivo);
+    ctx.fillStyle = lc; ctx.font = 'bold 16px Inter,sans-serif';
+    ctx.fillText(`▸ ${lote.nombre}`,28,y);
+    ctx.fillStyle = '#888'; ctx.font = '12px Inter,sans-serif';
+    ctx.fillText(`${lote.hectareas} ha${lote.cultivo?' · '+lote.cultivo:''}`,36,y+16);
+    y += 44;
+
+    ctx.strokeStyle = 'rgba(245,158,11,0.4)'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(22,y); ctx.lineTo(W-22,y); ctx.stroke();
+    y += 20;
+    ctx.fillStyle = '#f59e0b'; ctx.font = 'bold 15px Inter,sans-serif';
+    ctx.fillText(`TOTAL: ${lote.hectareas} ha`,28,y);
+    const costoHa = parseFloat(form.costo_ha)||0;
+    if (costoHa) {
+      ctx.textAlign = 'right';
+      ctx.fillStyle = '#2EAA6E'; ctx.font = 'bold 15px Inter,sans-serif';
+      ctx.fillText(`U$S ${(costoHa*lote.hectareas).toLocaleString('es-AR')} total · U$S ${costoHa}/ha`,W-28,y);
+      ctx.textAlign = 'left';
+    }
+    if (form.observaciones) {
+      y += 22; ctx.fillStyle = '#666'; ctx.font = 'italic 12px Inter,sans-serif';
+      ctx.fillText(form.observaciones,28,y);
+    }
+    ctx.textAlign = 'right';
+    ctx.fillStyle = '#f5f5f5'; ctx.font = 'bold 13px Inter,sans-serif';
+    const nomIng = ingeniero ? `Ing. Agr. ${ingeniero.nombre}${ingeniero.apellido?' '+ingeniero.apellido:''}` : 'Ingeniero Agrónomo';
+    ctx.fillText(nomIng,W-28,H-26);
+    if (ingeniero?.matricula) { ctx.fillStyle = '#a3a3a3'; ctx.font = '11px Inter,sans-serif'; ctx.fillText(`M.P. ${ingeniero.matricula}`,W-28,H-11); }
+    ctx.textAlign = 'left';
+  }
+
+  async function guardarAplicacionLote() {
+    setSavingApl2(true); setErrApl2('');
+    const costoHa = parseFloat(aplForm2.costo_ha) || null;
+
+    // Generar imagen
+    const canvas = canvasRef.current;
+    let imagenUrl: string | null = null;
+    if (canvas) {
+      dibujarCanvasLote(canvas, aplForm2);
+      const blob: Blob | null = await new Promise(r => canvas.toBlob(b => r(b), 'image/png'));
+      if (blob) {
+        const sb = createClient() as any;
+        const fileName = `${Date.now()}-${aplForm2.tipo.toLowerCase()}-${aplForm2.fecha}.png`;
+        const { data: up, error: upErr } = await sb.storage.from('aplicaciones').upload(fileName, blob, { contentType: 'image/png' });
+        if (!upErr && up) {
+          const { data: urlData } = sb.storage.from('aplicaciones').getPublicUrl(fileName);
+          imagenUrl = urlData?.publicUrl ?? null;
+        }
+        // Descargar localmente
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a'); a.href = url;
+        a.download = `orden-${aplForm2.tipo.toLowerCase()}-${aplForm2.fecha}.png`; a.click();
+        URL.revokeObjectURL(url);
+      }
+    }
+
+    const { error } = await (createClient() as any).from('aplicaciones').insert({
+      lote_id: lote.id, fecha: aplForm2.fecha, tipo: aplForm2.tipo,
+      productos: aplForm2.productos || null, maquinaria: aplForm2.maquinaria,
+      propio_alq: aplForm2.propio_alq, contratista: aplForm2.contratista.trim() || null,
+      costo_ha: costoHa, hectareas_apl: lote.hectareas,
+      observaciones: aplForm2.observaciones || null, imagen_url: imagenUrl,
+    });
+    setSavingApl2(false);
+    if (error) { setErrApl2(error.message); return; }
+    setAplForm2({ fecha: new Date().toISOString().slice(0,10), tipo: 'Herbicida', productos: '', maquinaria: 'M', propio_alq: 'Propio', contratista: '', costo_ha: '', observaciones: '' });
+    setShowAplForm2(false);
+    await fetchAplicaciones();
+  }
+
   return (
     <div className="max-w-2xl mx-auto">
       <canvas ref={canvasRef} className="hidden" />
@@ -337,10 +477,71 @@ export function LoteDetail({ lote:initial, productorId, productorNombre, ingenie
         <>
           <div className="flex items-center justify-between mb-3">
             <h2 className="font-semibold text-hi text-sm">Aplicaciones</h2>
-            <button onClick={()=>setShowAplForm(!showAplForm)} className="btn-primary text-xs py-1.5 px-3">
-              {showAplForm ? '✕ Cancelar' : '+ Agregar aplicación'}
-            </button>
+            <div className="flex gap-2">
+              <button onClick={()=>{setShowAplForm2(!showAplForm2); setShowAplForm(false);}} className="btn-primary text-xs py-1.5 px-3">
+                {showAplForm2 ? '✕ Cancelar' : '+ Aplicación en este lote'}
+              </button>
+            </div>
           </div>
+
+          {/* Form aplicación rápida desde el lote */}
+          {showAplForm2 && (
+            <div className="card p-5 space-y-4 mb-4" style={{borderColor:'rgba(46,170,110,0.4)'}}>
+              <p className="text-xs text-afa font-semibold">Lote: {lote.nombre} · {lote.hectareas} ha</p>
+              <div className="grid grid-cols-2 gap-3">
+                <div><label className="block text-xs font-semibold text-mid mb-1 uppercase tracking-wider">Fecha</label><input type="date" value={aplForm2.fecha} onChange={e=>setAplForm2(f=>({...f,fecha:e.target.value}))} className="field"/></div>
+                <div><label className="block text-xs font-semibold text-mid mb-1 uppercase tracking-wider">Tipo</label>
+                  <select value={aplForm2.tipo} onChange={e=>setAplForm2(f=>({...f,tipo:e.target.value}))} className="field">
+                    {['Herbicida','Fungicida','Insecticida','Fertilizante','Fungicida+Insecticida','Otro'].map(t=><option key={t}>{t}</option>)}
+                  </select>
+                </div>
+              </div>
+              <div><label className="block text-xs font-semibold text-mid mb-1 uppercase tracking-wider">Productos y dosis</label>
+                <textarea rows={2} value={aplForm2.productos} onChange={e=>setAplForm2(f=>({...f,productos:e.target.value}))} className="field resize-none" placeholder="Ej: Roundup 3 l/ha + Banvel 0.5 l/ha"/>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-mid mb-1 uppercase tracking-wider">Maquinaria</label>
+                  <div className="flex gap-1">
+                    {[['M','🚜'],['D','🚁'],['A','✈']].map(([v,icon])=>(
+                      <button key={v} type="button" onClick={()=>setAplForm2(f=>({...f,maquinaria:v}))}
+                        className={cn('flex-1 py-2 rounded text-sm border transition-all',aplForm2.maquinaria===v?'bg-ochre text-[#0a0a0a] border-ochre':'bg-base-3 border-base-5 text-mid hover:border-ochre')}
+                      >{icon}</button>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-mid mb-1 uppercase tracking-wider">Equipo</label>
+                  <div className="flex gap-1">
+                    {['Propio','Alq.'].map(v=>(
+                      <button key={v} type="button"
+                        onClick={()=>setAplForm2(f=>({...f,propio_alq:v==='Alq.'?'Alquilado':'Propio'}))}
+                        className={cn('flex-1 py-2 rounded text-xs border transition-all',
+                          (aplForm2.propio_alq==='Propio'&&v==='Propio')||(aplForm2.propio_alq==='Alquilado'&&v==='Alq.')?'bg-ochre text-[#0a0a0a] border-ochre':'bg-base-3 border-base-5 text-mid hover:border-ochre')}
+                      >{v}</button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+              <div><label className="block text-xs font-semibold text-mid mb-1 uppercase tracking-wider">Contratista <span className="text-lo normal-case font-normal">(opcional)</span></label>
+                <input value={aplForm2.contratista} onChange={e=>setAplForm2(f=>({...f,contratista:e.target.value}))} className="field" placeholder="Ej: Pérez Aplicaciones"/>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-mid mb-1 uppercase tracking-wider">
+                  Costo aplicación (U$S/ha)
+                  {aplForm2.costo_ha && <span className="ml-2 text-afa normal-case font-normal">= U$S {(parseFloat(aplForm2.costo_ha)*lote.hectareas).toLocaleString('es-AR')} total</span>}
+                </label>
+                <input type="number" step="0.01" value={aplForm2.costo_ha} onChange={e=>setAplForm2(f=>({...f,costo_ha:e.target.value}))} className="field" placeholder="0.00"/>
+              </div>
+              <div><label className="block text-xs font-semibold text-mid mb-1 uppercase tracking-wider">Observaciones</label>
+                <textarea rows={2} value={aplForm2.observaciones} onChange={e=>setAplForm2(f=>({...f,observaciones:e.target.value}))} className="field resize-none" placeholder="Condiciones, recomendaciones..."/>
+              </div>
+              {errApl2 && <p className="text-xs text-red-400 bg-red-950 border border-red-800 rounded px-3 py-2">{errApl2}</p>}
+              <button onClick={guardarAplicacionLote} disabled={savingApl2} className="btn-primary w-full">
+                {savingApl2 ? 'Guardando y generando imagen…' : 'Guardar + Generar imagen'}
+              </button>
+            </div>
+          )}
 
           {/* Form nueva aplicación */}
           {showAplForm && (
