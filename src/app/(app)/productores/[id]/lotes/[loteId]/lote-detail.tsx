@@ -291,7 +291,7 @@ export function LoteDetail({ lote:initial, productorId, productorNombre, ingenie
     }, 100);
   }
 
-  function dibujarCanvasLote(canvas: HTMLCanvasElement, form: typeof aplForm2) {
+  function dibujarCanvasLote(canvas: HTMLCanvasElement, form: { fecha:string; tipo:string; productos:string; maquinaria:string; propio_alq:string; contratista:string; costo_ha:string; observaciones:string }) {
     const prods = form.productos || '—';
     const W = 900;
     const tmpC = document.createElement('canvas');
