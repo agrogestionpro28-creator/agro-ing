@@ -140,23 +140,62 @@ export function ProductorDetail({ productor, campanas, ingeniero }:{ productor:P
     if(!lotesSeleccionados.length){setErrApl('Seleccioná al menos un lote');return;}
     setSavingApl(true); setErrApl('');
     const costoHa=parseFloat(aplForm.costo_ha)||null;
+
+    // 1. Generar imagen en canvas
+    const imagenBlob = await generarImagenBlob();
+
+    // 2. Subir a Storage
+    let imagenUrl: string|null = null;
+    if(imagenBlob) {
+      const sb = createClient() as any;
+      const fileName = `${Date.now()}-${aplForm.tipo.toLowerCase()}-${aplForm.fecha}.png`;
+      const { data: uploadData, error: uploadError } = await sb.storage
+        .from('aplicaciones').upload(fileName, imagenBlob, { contentType:'image/png', upsert:false });
+      if(!uploadError && uploadData) {
+        const { data: urlData } = sb.storage.from('aplicaciones').getPublicUrl(fileName);
+        imagenUrl = urlData?.publicUrl ?? null;
+      }
+    }
+
+    // 3. Insertar aplicaciones con imagen_url
     const inserts=lotesSeleccionados.map(lid=>{
       const l=lotes.find(x=>x.id===lid);
       return{ lote_id:lid, fecha:aplForm.fecha, tipo:aplForm.tipo,
         productos:aplForm.productos||null, maquinaria:aplForm.maquinaria,
         propio_alq:aplForm.propio_alq, contratista:aplForm.contratista.trim()||null,
-        costo_ha:costoHa, hectareas_apl:l?.hectareas||0, observaciones:aplForm.observaciones||null };
+        costo_ha:costoHa, hectareas_apl:l?.hectareas||0,
+        observaciones:aplForm.observaciones||null, imagen_url:imagenUrl };
     });
     const{error}=await (createClient() as any).from('aplicaciones').insert(inserts);
     setSavingApl(false);
     if(error){setErrApl(error.message);return;}
-    // Generar imagen
-    generarImagenOrden();
+
+    // 4. Descargar imagen localmente también
+    if(imagenBlob) {
+      const url=URL.createObjectURL(imagenBlob);
+      const a=document.createElement('a'); a.href=url;
+      a.download=`orden-${aplForm.tipo.toLowerCase()}-${aplForm.fecha}.png`; a.click();
+      URL.revokeObjectURL(url);
+    }
+
     setAplForm({...APL_VACIO}); setLotesSeleccionados([]); setShowAplModal(false);
+  }
+
+  async function generarImagenBlob(): Promise<Blob|null> {
+    const canvas=canvasRef.current; if(!canvas) return null;
+    dibujarCanvas(canvas);
+    return new Promise(resolve=>canvas.toBlob(b=>resolve(b),'image/png'));
   }
 
   function generarImagenOrden(){
     const canvas=canvasRef.current; if(!canvas) return;
+    dibujarCanvas(canvas);
+    const url=canvas.toDataURL('image/png');
+    const a=document.createElement('a'); a.href=url;
+    a.download=`orden-${aplForm.tipo.toLowerCase()}-${aplForm.fecha}.png`; a.click();
+  }
+
+  function dibujarCanvas(canvas: HTMLCanvasElement){
     const W=900,H=Math.max(480, 200+lotesSeleccionados.length*28);
     canvas.width=W; canvas.height=H;
     const ctx=canvas.getContext('2d')!;
@@ -265,10 +304,6 @@ export function ProductorDetail({ productor, campanas, ingeniero }:{ productor:P
     if(ingeniero?.matricula){ctx.fillStyle='#a3a3a3';ctx.font='10px Inter,sans-serif';ctx.fillText(`M.P. ${ingeniero.matricula}`,W-28,H-14);}
     ctx.textAlign='left';
 
-    // Descargar
-    const url=canvas.toDataURL('image/png');
-    const a=document.createElement('a'); a.href=url;
-    a.download=`orden-${aplForm.tipo.toLowerCase()}-${aplForm.fecha}.png`; a.click();
   }
 
   // Crop styles for lot cards
