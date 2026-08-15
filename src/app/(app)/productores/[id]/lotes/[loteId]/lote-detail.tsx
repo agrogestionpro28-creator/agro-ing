@@ -61,7 +61,9 @@ export function LoteDetail({ lote:initial, productorId, productorNombre, ingenie
   async function fetchLotesProductor() {
     const { data } = await (createClient() as any).from('lotes')
       .select('id,nombre,hectareas,cultivo').eq('productor_id', productorId).eq('campana_id', lote.campana_id).order('nombre');
-    setLotesProductor(data ?? []);
+    const sorted = (data??[]).sort((a:any,b:any) =>
+      a.nombre.localeCompare(b.nombre, 'es', {numeric:true, sensitivity:'base'}));
+    setLotesProductor(sorted);
   }
 
   async function guardarLote() {
