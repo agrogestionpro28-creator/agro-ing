@@ -7,125 +7,113 @@ import { cn } from '@/lib/utils';
 
 declare const XLSX: any;
 
-type Productor = { id: string; razon_social: string; cuit: string | null; localidad: string | null; telefono: string | null; email: string | null };
-type Campana = { id: string; nombre: string; fecha_inicio: string; fecha_fin: string };
-type Lote = { id: string; nombre: string; hectareas: number; cultivo: string | null; cultivo_2: string | null; variedad: string | null; fecha_siembra: string | null; notas: string | null };
+type Productor = { id:string; razon_social:string; cuit:string|null; localidad:string|null; telefono:string|null; email:string|null };
+type Campana = { id:string; nombre:string; fecha_inicio:string; fecha_fin:string };
+type Lote = { id:string; nombre:string; hectareas:number; cultivo:string|null; cultivo_2:string|null; variedad:string|null; fecha_siembra:string|null; notas:string|null };
+type Ingeniero = { nombre:string; apellido:string|null; matricula:string|null };
 
-// Colores hardcodeados para que Tailwind los incluya siempre
-const CROP_STYLES: Record<string, { cardStyle: string; numColor: string; badgeStyle: string }> = {
-  'Soja':    { cardStyle: 'bg-green-950 border-green-500 shadow-[0_0_18px_rgba(34,197,94,0.4)]',    numColor: 'text-green-400',  badgeStyle: 'bg-green-900 text-green-400 border border-green-500' },
-  'Soja 2°': { cardStyle: 'bg-green-950 border-green-500 shadow-[0_0_18px_rgba(34,197,94,0.4)]',    numColor: 'text-green-400',  badgeStyle: 'bg-green-900 text-green-400 border border-green-500' },
-  'Maíz':    { cardStyle: 'bg-lime-950  border-lime-500  shadow-[0_0_18px_rgba(132,204,22,0.4)]',   numColor: 'text-lime-400',   badgeStyle: 'bg-lime-900 text-lime-400 border border-lime-500' },
-  'Maíz 1°': { cardStyle: 'bg-lime-950  border-lime-500  shadow-[0_0_18px_rgba(132,204,22,0.4)]',   numColor: 'text-lime-400',   badgeStyle: 'bg-lime-900 text-lime-400 border border-lime-500' },
-  'Trigo':   { cardStyle: 'bg-amber-950 border-amber-500 shadow-[0_0_18px_rgba(245,158,11,0.4)]',   numColor: 'text-amber-400',  badgeStyle: 'bg-amber-900 text-amber-400 border border-amber-500' },
-  'Cebada':  { cardStyle: 'bg-yellow-950 border-yellow-500 shadow-[0_0_18px_rgba(234,179,8,0.4)]',  numColor: 'text-yellow-400', badgeStyle: 'bg-yellow-900 text-yellow-400 border border-yellow-500' },
-  'Sorgo':   { cardStyle: 'bg-orange-950 border-orange-700 shadow-[0_0_18px_rgba(194,65,12,0.4)]',  numColor: 'text-orange-600', badgeStyle: 'bg-orange-950 text-orange-500 border border-orange-700' },
-  'Girasol': { cardStyle: 'bg-sky-950   border-sky-400   shadow-[0_0_18px_rgba(56,189,248,0.4)]',   numColor: 'text-sky-400',    badgeStyle: 'bg-sky-900 text-sky-400 border border-sky-400' },
-  'Alfalfa': { cardStyle: 'bg-teal-950  border-teal-500  shadow-[0_0_18px_rgba(20,184,166,0.4)]',   numColor: 'text-teal-400',   badgeStyle: 'bg-teal-900 text-teal-400 border border-teal-500' },
-};
-const DEFAULT_STYLE = { cardStyle: 'bg-base-3 border-base-5', numColor: 'text-mid', badgeStyle: 'bg-base-4 text-lo border border-base-5' };
+const TIPOS_APL = ['Herbicida','Fungicida','Insecticida','Fertilizante','Fungicida+Insecticida','Otro'];
+const APL_VACIO = { fecha:new Date().toISOString().slice(0,10), tipo:'Herbicida', productos:'', maquinaria:'M', propio_alq:'Propio', contratista:'', costo_ha:'', observaciones:'' };
 
+const CULTIVOS_ORDEN = ['Soja','Maíz','Trigo','Girasol','Sorgo','Cebada','Alfalfa','Otro'];
 
-// Resolver color por nombre de cultivo (normalizado)
-function cropColor(cultivo: string | null): { fill: string; stroke: string } {
-  if (!cultivo) return { fill: '#1a1a1a', stroke: '#444444' };
-  const n = cultivo.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
-  if (n.includes('soja'))    return { fill: '#052010', stroke: '#22c55e' };
-  if (n.includes('maiz') || n.includes('maíz')) return { fill: '#0d1a00', stroke: '#84cc16' };
-  if (n.includes('trigo'))   return { fill: '#1a0f00', stroke: '#f59e0b' };
-  if (n.includes('cebada'))  return { fill: '#1a1200', stroke: '#fbbf24' };
-  if (n.includes('sorgo'))   return { fill: '#1a0500', stroke: '#ea580c' };
-  if (n.includes('girasol')) return { fill: '#00101a', stroke: '#38bdf8' };
-  if (n.includes('alfalfa')) return { fill: '#001a10', stroke: '#34d399' };
-  return { fill: '#1a1a1a', stroke: '#444444' };
+function cropColor(c:string|null){
+  if(!c) return '#a3a3a3';
+  const n=c.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+  if(n.includes('soja'))    return '#22c55e';
+  if(n.includes('maiz'))    return '#84cc16';
+  if(n.includes('trigo'))   return '#f59e0b';
+  if(n.includes('cebada'))  return '#fbbf24';
+  if(n.includes('sorgo'))   return '#ea580c';
+  if(n.includes('girasol')) return '#38bdf8';
+  if(n.includes('alfalfa')) return '#34d399';
+  return '#a3a3a3';
 }
 
-function getCultivoActual(c1: string | null, c2: string | null): string | null {
-  // Hemisferio sur: el cultivo actual es siempre el 1ro hasta que se coseche.
-  // El 2do cultivo (ej: soja 2da) se siembra DESPUÉS de cosechar el 1ro.
-  return c1 || c2;
-}
-
-function parseFecha(val: any): string | null {
-  if (!val) return null;
-  if (val instanceof Date) return val.toISOString().slice(0, 10);
-  const d = new Date(String(val));
-  if (!isNaN(d.getTime())) return d.toISOString().slice(0, 10);
+function parseFecha(val:any):string|null{
+  if(!val) return null;
+  if(val instanceof Date) return val.toISOString().slice(0,10);
+  const d=new Date(String(val));
+  if(!isNaN(d.getTime())) return d.toISOString().slice(0,10);
   return null;
 }
 
-function loadXLSX(): Promise<void> {
-  return new Promise((resolve) => {
-    if (typeof XLSX !== 'undefined') { resolve(); return; }
-    const s = document.createElement('script');
-    s.src = 'https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js';
-    s.onload = () => resolve();
-    document.head.appendChild(s);
+function loadXLSX():Promise<void>{
+  return new Promise(resolve=>{
+    if(typeof XLSX!=='undefined'){resolve();return;}
+    const s=document.createElement('script');
+    s.src='https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js';
+    s.onload=()=>resolve(); document.head.appendChild(s);
   });
 }
 
-export function ProductorDetail({ productor, campanas }: { productor: Productor; campanas: Campana[] }) {
+export function ProductorDetail({ productor, campanas, ingeniero }:{ productor:Productor; campanas:Campana[]; ingeniero:Ingeniero|null }) {
   const { campanaId } = useCampana();
   const [lotes, setLotes] = useState<Lote[]>([]);
   const [loading, setLoading] = useState(true);
   const [importando, setImportando] = useState(false);
   const [msg, setMsg] = useState('');
-  const [confirmDelete, setConfirmDelete] = useState<{ id: string; nombre: string } | null>(null);
-  const [filtroCultivo, setFiltroCultivo] = useState<string>('');
+  const [filtroCultivo, setFiltroCultivo] = useState('');
+  const [confirmDelete, setConfirmDelete] = useState<{id:string;nombre:string}|null>(null);
+  const [showAplModal, setShowAplModal] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
 
-  const campana = campanas.find((c) => c.id === campanaId);
-  const totalHas = lotes.reduce((s, l) => s + Number(l.hectareas), 0);
-  // Cultivos únicos para filtro
-  const cultivosUnicos = Array.from(new Set(
-    lotes.flatMap(l => [l.cultivo, l.cultivo_2].filter(Boolean) as string[])
-  )).sort();
-  // Lotes filtrados
-  const lotesFiltrados = filtroCultivo
-    ? lotes.filter(l => l.cultivo === filtroCultivo || l.cultivo_2 === filtroCultivo)
-    : lotes;
+  // Aplicación
+  const [aplForm, setAplForm] = useState({...APL_VACIO});
+  const [lotesSeleccionados, setLotesSeleccionados] = useState<string[]>([]);
+  const [savingApl, setSavingApl] = useState(false);
+  const [aplFiltro, setAplFiltro] = useState('');
+  const [errApl, setErrApl] = useState('');
 
-  useEffect(() => { if (campanaId) fetchLotes(); }, [campanaId, productor.id]);
+  const campana = campanas.find(c=>c.id===campanaId);
+  const totalHas = lotes.reduce((s,l)=>s+Number(l.hectareas),0);
+  const cultivosUnicos = Array.from(new Set(lotes.flatMap(l=>[l.cultivo,l.cultivo_2].filter(Boolean) as string[]))).sort();
+  const lotesFiltrados = filtroCultivo ? lotes.filter(l=>l.cultivo===filtroCultivo||l.cultivo_2===filtroCultivo) : lotes;
 
-  async function fetchLotes() {
+  // Lotes filtrados en modal aplicación
+  const lotesAplFiltrados = aplFiltro ? lotes.filter(l=>l.cultivo===aplFiltro||l.cultivo_2===aplFiltro) : lotes;
+  const hasTotalesApl = lotesSeleccionados.reduce((s,lid)=>{
+    const l=lotes.find(x=>x.id===lid); return s+(l?.hectareas||0);
+  },0);
+
+  useEffect(()=>{ if(campanaId) fetchLotes(); },[campanaId,productor.id]);
+
+  async function fetchLotes(){
     setLoading(true);
-    const { data } = await createClient().from('lotes')
+    const {data}=await (createClient() as any).from('lotes')
       .select('id,nombre,hectareas,cultivo,cultivo_2,variedad,fecha_siembra,notas')
-      .eq('productor_id', productor.id).eq('campana_id', campanaId).order('nombre');
-    setLotes(data ?? []);
-    setLoading(false);
+      .eq('productor_id',productor.id).eq('campana_id',campanaId).order('nombre');
+    setLotes(data??[]); setLoading(false);
   }
 
-  async function eliminarLote(id: string) {
-    await createClient().from('lotes').delete().eq('id', id);
-    setConfirmDelete(null);
-    await fetchLotes();
+  async function eliminarLote(id:string){
+    await (createClient() as any).from('lotes').delete().eq('id',id);
+    setConfirmDelete(null); await fetchLotes();
   }
 
-  async function exportar() {
+  async function exportar(){
     await loadXLSX();
-    const rows = [['Nombre','Hectáreas','Cultivo','2do Cultivo','Variedad','Fecha Siembra','Notas'],
+    const rows=[['Nombre','Hectáreas','Cultivo','2do Cultivo','Variedad','Fecha Siembra','Notas'],
       ...lotes.map(l=>[l.nombre,l.hectareas,l.cultivo??'',l.cultivo_2??'',l.variedad??'',l.fecha_siembra??'',l.notas??''])];
-    const ws = XLSX.utils.aoa_to_sheet(rows);
-    ws['!cols']=[{wch:20},{wch:10},{wch:12},{wch:12},{wch:15},{wch:14},{wch:30}];
-    const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'Lotes');
+    const ws=XLSX.utils.aoa_to_sheet(rows); ws['!cols']=[{wch:20},{wch:10},{wch:12},{wch:12},{wch:15},{wch:14},{wch:30}];
+    const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'Lotes');
     XLSX.writeFile(wb,`lotes-${productor.razon_social.replace(/\s/g,'-')}-${campana?.nombre??''}.xlsx`);
   }
 
-  async function descargarPlantilla() {
+  async function descargarPlantilla(){
     await loadXLSX();
     const rows=[['Nombre','Hectáreas','Cultivo','2do Cultivo','Variedad','Fecha Siembra','Notas'],
-      ['Lote Norte',120.5,'Soja','','DM 4210','2026-11-01',''],
-      ['Lote Sur',85,'Trigo','Soja','Klein Tauro','2026-06-15','Doble cultivo']];
+      ['Lote Norte',120.5,'Soja','','DM 4210','2026-11-01',''],['Lote Sur',85,'Trigo','Soja','Klein Tauro','2026-06-15','']];
     const ws=XLSX.utils.aoa_to_sheet(rows); ws['!cols']=[{wch:20},{wch:10},{wch:12},{wch:12},{wch:15},{wch:14},{wch:30}];
     const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'Lotes');
     XLSX.writeFile(wb,'plantilla-lotes.xlsx');
   }
 
-  async function importar(e: React.ChangeEvent<HTMLInputElement>) {
+  async function importar(e:React.ChangeEvent<HTMLInputElement>){
     const file=e.target.files?.[0]; if(!file) return;
     setImportando(true); setMsg('');
-    try {
+    try{
       await loadXLSX();
       const wb=XLSX.read(new Uint8Array(await file.arrayBuffer()),{type:'array',cellDates:true});
       const rows:any[]=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{defval:''});
@@ -140,64 +128,303 @@ export function ProductorDetail({ productor, campanas }: { productor: Productor;
         fecha_siembra:parseFecha(r['Fecha Siembra']||r['fecha_siembra']),
         notas:String(r['Notas']||r['notas']||'').trim()||null,
       })).filter(r=>r.nombre&&r.hectareas>0);
-      if(!toInsert.length){setMsg('Sin filas válidas. Columnas: Nombre y Hectáreas obligatorias.');setImportando(false);return;}
-      const{error}=await createClient().from('lotes').insert(toInsert);
+      if(!toInsert.length){setMsg('Sin filas válidas.');setImportando(false);return;}
+      const{error}=await (createClient() as any).from('lotes').insert(toInsert);
       if(error) setMsg('Error: '+error.message);
-      else{setMsg(`✓ ${toInsert.length} lotes importados`);await fetchLotes();}
-    } catch(err:any){setMsg('Error: '+err.message);}
-    setImportando(false);
-    if(fileRef.current) fileRef.current.value='';
+      else{setMsg(`✓ ${toInsert.length} lotes importados`); await fetchLotes();}
+    }catch(err:any){setMsg('Error: '+err.message);}
+    setImportando(false); if(fileRef.current) fileRef.current.value='';
   }
+
+  async function guardarAplicacion(){
+    if(!lotesSeleccionados.length){setErrApl('Seleccioná al menos un lote');return;}
+    setSavingApl(true); setErrApl('');
+    const costoHa=parseFloat(aplForm.costo_ha)||null;
+    const inserts=lotesSeleccionados.map(lid=>{
+      const l=lotes.find(x=>x.id===lid);
+      return{ lote_id:lid, fecha:aplForm.fecha, tipo:aplForm.tipo,
+        productos:aplForm.productos||null, maquinaria:aplForm.maquinaria,
+        propio_alq:aplForm.propio_alq, contratista:aplForm.contratista.trim()||null,
+        costo_ha:costoHa, hectareas_apl:l?.hectareas||0, observaciones:aplForm.observaciones||null };
+    });
+    const{error}=await (createClient() as any).from('aplicaciones').insert(inserts);
+    setSavingApl(false);
+    if(error){setErrApl(error.message);return;}
+    // Generar imagen
+    generarImagenOrden();
+    setAplForm({...APL_VACIO}); setLotesSeleccionados([]); setShowAplModal(false);
+  }
+
+  function generarImagenOrden(){
+    const canvas=canvasRef.current; if(!canvas) return;
+    const W=900,H=Math.max(480, 200+lotesSeleccionados.length*28);
+    canvas.width=W; canvas.height=H;
+    const ctx=canvas.getContext('2d')!;
+
+    // Fondo
+    ctx.fillStyle='#0a0a0a'; ctx.fillRect(0,0,W,H);
+
+    // Panal fondo
+    ctx.strokeStyle='rgba(245,158,11,0.06)'; ctx.lineWidth=1;
+    for(let row=0;row<20;row++) for(let col=0;col<18;col++){
+      const ox=col*54+(row%2===0?0:27), oy=row*36-18;
+      ctx.beginPath();
+      [[27,0],[54,18],[54,36],[27,54],[0,36],[0,18]].forEach(([x,y],i)=>i===0?ctx.moveTo(ox+x,oy+y):ctx.lineTo(ox+x,oy+y));
+      ctx.closePath(); ctx.stroke();
+    }
+
+    // Banda verde izquierda
+    const g=ctx.createLinearGradient(0,0,0,H);
+    g.addColorStop(0,'#2EAA6E'); g.addColorStop(1,'#0d2818');
+    ctx.fillStyle=g; ctx.fillRect(0,0,6,H);
+
+    // Header band
+    ctx.fillStyle='rgba(20,20,20,0.95)'; ctx.fillRect(6,0,W-6,85);
+    ctx.strokeStyle='rgba(245,158,11,0.4)'; ctx.lineWidth=1;
+    ctx.beginPath(); ctx.moveTo(6,85); ctx.lineTo(W,85); ctx.stroke();
+
+    // Título
+    ctx.fillStyle='#f59e0b'; ctx.font='bold 10px Inter,sans-serif';
+    ctx.letterSpacing='3px'; ctx.fillText('ORDEN DE APLICACIÓN',28,24); ctx.letterSpacing='0';
+    ctx.fillStyle='#f5f5f5'; ctx.font='bold 30px Inter,sans-serif';
+    ctx.fillText(aplForm.tipo.toUpperCase(),28,62);
+
+    // Fecha y maquinaria (derecha)
+    const maqTexto=aplForm.maquinaria==='M'?'Mosquito':aplForm.maquinaria==='D'?'Dron':'Avión';
+    ctx.textAlign='right';
+    ctx.fillStyle='#f59e0b'; ctx.font='bold 24px Inter,sans-serif';
+    ctx.fillText(aplForm.fecha,W-28,38);
+    ctx.fillStyle='#a3a3a3'; ctx.font='13px Inter,sans-serif';
+    ctx.fillText(`${maqTexto} · ${aplForm.propio_alq}${aplForm.contratista?' · '+aplForm.contratista:''}`,W-28,62);
+    ctx.textAlign='left';
+
+    // Productor
+    ctx.fillStyle='#525252'; ctx.font='11px Inter,sans-serif';
+    ctx.fillText(productor.razon_social.toUpperCase(),28,82);
+
+    // Productos
+    let y=110;
+    ctx.fillStyle='rgba(245,158,11,0.15)'; ctx.fillRect(22,y-16,W-44,36);
+    ctx.fillStyle='#f59e0b'; ctx.font='bold 9px Inter,sans-serif';
+    ctx.letterSpacing='2px'; ctx.fillText('PRODUCTOS Y DOSIS',28,y-2); ctx.letterSpacing='0';
+    ctx.fillStyle='#f5f5f5'; ctx.font='bold 15px Inter,sans-serif';
+    const prods=aplForm.productos||'—';
+    const words=prods.split(' '); let line=''; y+=20;
+    for(const w of words){
+      const test=line+w+' ';
+      if(ctx.measureText(test).width>W-60&&line){ctx.fillText(line,28,y);line=w+' ';y+=20;}
+      else line=test;
+    }
+    ctx.fillText(line,28,y); y+=28;
+
+    // Lotes
+    ctx.fillStyle='#333'; ctx.fillRect(22,y-16,W-44,1);
+    y+=10;
+    ctx.fillStyle='#525252'; ctx.font='bold 9px Inter,sans-serif';
+    ctx.letterSpacing='2px'; ctx.fillText('LOTES A APLICAR',28,y); ctx.letterSpacing='0';
+    y+=18;
+
+    const lotesInfo=lotes.filter(l=>lotesSeleccionados.includes(l.id));
+    let totalHasApl=0;
+    lotesInfo.forEach(l=>{
+      totalHasApl+=l.hectareas;
+      const lc=cropColor(l.cultivo);
+      ctx.fillStyle=lc; ctx.font='bold 13px Inter,sans-serif';
+      ctx.fillText(`▸ ${l.nombre}`,28,y);
+      ctx.fillStyle='#a3a3a3'; ctx.font='11px Inter,sans-serif';
+      ctx.fillText(`${l.hectareas} ha${l.cultivo?' · '+l.cultivo:''}`,28+ctx.measureText(`▸ ${l.nombre}`).width+12,y);
+      y+=22;
+    });
+
+    // Footer
+    y+=10;
+    ctx.strokeStyle='rgba(245,158,11,0.3)'; ctx.lineWidth=1;
+    ctx.beginPath(); ctx.moveTo(22,y); ctx.lineTo(W-22,y); ctx.stroke(); y+=18;
+
+    ctx.fillStyle='#f59e0b'; ctx.font='bold 14px Inter,sans-serif';
+    ctx.fillText(`TOTAL: ${totalHasApl} ha`,28,y);
+    const costoHa=parseFloat(aplForm.costo_ha)||0;
+    if(costoHa){
+      ctx.textAlign='right';
+      ctx.fillStyle='#2EAA6E'; ctx.font='bold 14px Inter,sans-serif';
+      ctx.fillText(`U$S ${(costoHa*totalHasApl).toLocaleString('es-AR')} total · U$S ${costoHa}/ha`,W-28,y);
+      ctx.textAlign='left';
+    }
+    if(aplForm.observaciones){
+      y+=18; ctx.fillStyle='#525252'; ctx.font='italic 11px Inter,sans-serif';
+      ctx.fillText(aplForm.observaciones,28,y);
+    }
+
+    // Firma
+    ctx.textAlign='right';
+    ctx.fillStyle='#f5f5f5'; ctx.font='bold 12px Inter,sans-serif';
+    const nomIng=ingeniero?`Ing. Agr. ${ingeniero.nombre}${ingeniero.apellido?' '+ingeniero.apellido:''}`:'Ingeniero Agrónomo';
+    ctx.fillText(nomIng,W-28,H-28);
+    if(ingeniero?.matricula){ctx.fillStyle='#a3a3a3';ctx.font='10px Inter,sans-serif';ctx.fillText(`M.P. ${ingeniero.matricula}`,W-28,H-14);}
+    ctx.textAlign='left';
+
+    // Descargar
+    const url=canvas.toDataURL('image/png');
+    const a=document.createElement('a'); a.href=url;
+    a.download=`orden-${aplForm.tipo.toLowerCase()}-${aplForm.fecha}.png`; a.click();
+  }
+
+  // Crop styles for lot cards
+  const CROP_STYLES: Record<string,{cardStyle:string;numColor:string;badgeStyle:string}> = {
+    'Soja':    {cardStyle:'bg-green-950 border-green-500 shadow-[0_0_18px_rgba(34,197,94,0.4)]',    numColor:'text-green-400',  badgeStyle:'bg-green-900 text-green-400 border border-green-500'},
+    'Maíz':    {cardStyle:'bg-lime-950  border-lime-500  shadow-[0_0_18px_rgba(132,204,22,0.4)]',   numColor:'text-lime-400',   badgeStyle:'bg-lime-900 text-lime-400 border border-lime-500'},
+    'Trigo':   {cardStyle:'bg-amber-950 border-amber-500 shadow-[0_0_18px_rgba(245,158,11,0.4)]',   numColor:'text-amber-400',  badgeStyle:'bg-amber-900 text-amber-400 border border-amber-500'},
+    'Cebada':  {cardStyle:'bg-yellow-950 border-yellow-500 shadow-[0_0_18px_rgba(234,179,8,0.4)]',  numColor:'text-yellow-400', badgeStyle:'bg-yellow-900 text-yellow-400 border border-yellow-500'},
+    'Sorgo':   {cardStyle:'bg-orange-950 border-orange-700 shadow-[0_0_18px_rgba(194,65,12,0.4)]',  numColor:'text-orange-600', badgeStyle:'bg-orange-950 text-orange-500 border border-orange-700'},
+    'Girasol': {cardStyle:'bg-sky-950   border-sky-400   shadow-[0_0_18px_rgba(56,189,248,0.4)]',   numColor:'text-sky-400',    badgeStyle:'bg-sky-900 text-sky-400 border border-sky-400'},
+    'Alfalfa': {cardStyle:'bg-teal-950  border-teal-500  shadow-[0_0_18px_rgba(20,184,166,0.4)]',   numColor:'text-teal-400',   badgeStyle:'bg-teal-900 text-teal-400 border border-teal-500'},
+  };
+  const DEFAULT_STYLE={cardStyle:'bg-base-3 border-base-5',numColor:'text-mid',badgeStyle:'bg-base-4 text-lo border border-base-5'};
 
   return (
     <div>
-      <div className="flex items-start justify-between mb-1">
-        <p className="eyebrow">Productor</p>
-        <Link href={`/productores/${productor.id}/editar`} className="btn-ghost text-xs py-1 px-3">✏ Editar</Link>
-      </div>
-      <h1 className="text-2xl font-bold text-hi mb-1">{productor.razon_social}</h1>
-      <p className="text-mid text-sm mb-6">
-        {[productor.cuit,productor.localidad,productor.telefono].filter(Boolean).join(' · ')||'Sin datos adicionales'}
-      </p>
+      <canvas ref={canvasRef} className="hidden"/>
 
-      <div className="grid grid-cols-3 gap-3 mb-6">
-        <div className="card p-6 text-center"><div className="text-lo text-xs uppercase tracking-wider mb-2">Hectáreas</div><div className="text-green-400 font-black text-3xl">{Math.round(totalHas)} ha</div></div>
-        <div className="card p-6 text-center"><div className="text-lo text-xs uppercase tracking-wider mb-2">Lotes</div><div className="text-hi font-black text-3xl">{lotes.length}</div></div>
-        <div className="card p-6 text-center"><div className="text-lo text-xs uppercase tracking-wider mb-2">Campaña</div><div className="text-amber-400 font-bold text-2xl">{campana?.nombre??'—'}</div></div>
+      {/* Header compacto */}
+      <div className="flex items-start justify-between mb-4">
+        <div>
+          <p className="eyebrow mb-1">Productor</p>
+          <h1 className="text-2xl font-bold text-hi">{productor.razon_social}</h1>
+          {/* Stats inline */}
+          <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-sm">
+            <span className="text-green-400 font-black text-lg">{Math.round(totalHas)} ha</span>
+            <span className="text-mid">·</span>
+            <span className="text-hi font-semibold">{lotes.length} lotes</span>
+            <span className="text-mid">·</span>
+            <span className="text-amber-400 font-semibold">{campana?.nombre??'—'}</span>
+            {productor.cuit && <><span className="text-mid">·</span><span className="text-lo">{productor.cuit}</span></>}
+            {productor.localidad && <><span className="text-mid">·</span><span className="text-lo">{productor.localidad}</span></>}
+            {productor.telefono && <><span className="text-mid">·</span><span className="text-lo">{productor.telefono}</span></>}
+          </div>
+        </div>
+        <div className="flex gap-2 shrink-0">
+          <button onClick={()=>setShowAplModal(true)} className="btn-afa text-xs py-1.5 px-3">+ Aplicación</button>
+          <Link href={`/productores/${productor.id}/editar`} className="btn-ghost text-xs py-1.5 px-3">✏ Editar</Link>
+        </div>
       </div>
 
-      <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
-        <div className="flex items-center gap-3 flex-wrap">
-          <h2 className="font-semibold text-hi">Lotes — Campaña {campana?.nombre}</h2>
-          {/* Filtros por cultivo */}
+      {/* Modal aplicación */}
+      {showAplModal && (
+        <div className="fixed inset-0 bg-black/80 z-50 flex items-start justify-center overflow-y-auto py-8 px-4">
+          <div className="w-full max-w-2xl card p-6 space-y-5" style={{borderColor:'rgba(46,170,110,0.4)'}}>
+            <div className="flex items-center justify-between">
+              <h2 className="font-bold text-hi text-lg">Nueva aplicación</h2>
+              <button onClick={()=>{setShowAplModal(false);setLotesSeleccionados([]);setErrApl('');}} className="text-lo hover:text-hi text-xl">✕</button>
+            </div>
+
+            {/* Filtro y selección de lotes */}
+            <div>
+              <div className="flex items-center gap-2 mb-3 flex-wrap">
+                <label className="text-xs font-semibold text-mid uppercase tracking-wider">Seleccionar lotes</label>
+                <div className="flex gap-1 flex-wrap ml-2">
+                  <button onClick={()=>setAplFiltro('')} className={cn('text-[10px] font-bold px-2 py-1 rounded border',aplFiltro===''?'bg-base-5 text-hi border-base-6':'bg-base-3 text-lo border-base-5 hover:border-base-6')}>Todos</button>
+                  {cultivosUnicos.map(c=>{
+                    const cc=cropColor(c);
+                    return <button key={c} onClick={()=>setAplFiltro(f=>f===c?'':c)}
+                      className="text-[10px] font-bold px-2 py-1 rounded border transition-all"
+                      style={{color:cc,background:aplFiltro===c?cc+'22':'transparent',borderColor:aplFiltro===c?cc:'#333'}}
+                    >{c}</button>;
+                  })}
+                </div>
+                <div className="ml-auto flex gap-2">
+                  <button onClick={()=>setLotesSeleccionados(lotesAplFiltrados.map(l=>l.id))} className="text-[10px] text-ochre hover:underline">Todos los filtrados</button>
+                  <button onClick={()=>setLotesSeleccionados([])} className="text-[10px] text-lo hover:underline">Limpiar</button>
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-2 max-h-44 overflow-y-auto pr-1">
+                {lotesAplFiltrados.map(l=>{
+                  const sel=lotesSeleccionados.includes(l.id);
+                  const lc=cropColor(l.cultivo);
+                  return <button key={l.id} type="button"
+                    onClick={()=>setLotesSeleccionados(prev=>sel?prev.filter(x=>x!==l.id):[...prev,l.id])}
+                    className="text-xs px-3 py-1.5 rounded border transition-all"
+                    style={{background:sel?lc+'22':'transparent',borderColor:sel?lc:'#333',color:sel?lc:'#525252'}}
+                  >{l.nombre} · {l.hectareas} ha</button>;
+                })}
+              </div>
+              {lotesSeleccionados.length>0 && (
+                <p className="text-xs text-afa mt-2">{lotesSeleccionados.length} lotes · {hasTotalesApl} ha seleccionadas</p>
+              )}
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div><label className="block text-xs font-semibold text-mid mb-1 uppercase tracking-wider">Fecha</label><input type="date" value={aplForm.fecha} onChange={e=>setAplForm(f=>({...f,fecha:e.target.value}))} className="field"/></div>
+              <div><label className="block text-xs font-semibold text-mid mb-1 uppercase tracking-wider">Tipo</label><select value={aplForm.tipo} onChange={e=>setAplForm(f=>({...f,tipo:e.target.value}))} className="field">{TIPOS_APL.map(t=><option key={t}>{t}</option>)}</select></div>
+            </div>
+
+            <div><label className="block text-xs font-semibold text-mid mb-1 uppercase tracking-wider">Productos y dosis</label><textarea rows={2} value={aplForm.productos} onChange={e=>setAplForm(f=>({...f,productos:e.target.value}))} className="field resize-none" placeholder="Ej: Roundup 3 l/ha + Banvel 0.5 l/ha"/></div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-semibold text-mid mb-1 uppercase tracking-wider">Maquinaria</label>
+                <div className="flex gap-1">
+                  {[['M','🚜 Mosquito'],['D','🚁 Dron'],['A','✈ Avión']].map(([v,label])=>(
+                    <button key={v} type="button" onClick={()=>setAplForm(f=>({...f,maquinaria:v}))}
+                      className={cn('flex-1 py-2 rounded text-xs border transition-all',aplForm.maquinaria===v?'bg-ochre text-base-DEFAULT border-ochre':'bg-base-3 border-base-5 text-mid hover:border-ochre')}
+                    >{label}</button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-mid mb-1 uppercase tracking-wider">Equipo</label>
+                <div className="flex gap-1">
+                  {['Propio','Alq.'].map(v=>(
+                    <button key={v} type="button"
+                      onClick={()=>setAplForm(f=>({...f,propio_alq:v==='Alq.'?'Alquilado':'Propio'}))}
+                      className={cn('flex-1 py-2 rounded text-xs border transition-all',
+                        (aplForm.propio_alq==='Propio'&&v==='Propio')||(aplForm.propio_alq==='Alquilado'&&v==='Alq.')?'bg-ochre text-base-DEFAULT border-ochre':'bg-base-3 border-base-5 text-mid hover:border-ochre')}
+                    >{v}</button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div><label className="block text-xs font-semibold text-mid mb-1 uppercase tracking-wider">Contratista <span className="text-lo normal-case tracking-normal font-normal">(opcional)</span></label><input value={aplForm.contratista} onChange={e=>setAplForm(f=>({...f,contratista:e.target.value}))} className="field" placeholder="Ej: Pérez Aplicaciones"/></div>
+
+            <div>
+              <label className="block text-xs font-semibold text-mid mb-1 uppercase tracking-wider">
+                Costo aplicación (U$S/ha)
+                {aplForm.costo_ha&&hasTotalesApl>0&&<span className="ml-2 text-afa normal-case tracking-normal font-normal">= U$S {(parseFloat(aplForm.costo_ha)*hasTotalesApl).toLocaleString('es-AR')} total</span>}
+              </label>
+              <input type="number" step="0.01" value={aplForm.costo_ha} onChange={e=>setAplForm(f=>({...f,costo_ha:e.target.value}))} className="field" placeholder="0.00"/>
+            </div>
+
+            <div><label className="block text-xs font-semibold text-mid mb-1 uppercase tracking-wider">Observaciones / Recomendaciones</label><textarea rows={2} value={aplForm.observaciones} onChange={e=>setAplForm(f=>({...f,observaciones:e.target.value}))} className="field resize-none" placeholder="Condiciones, momento óptimo, precauciones..."/></div>
+
+            {errApl&&<p className="text-xs text-red-400 bg-red-950 border border-red-800 rounded px-3 py-2">{errApl}</p>}
+
+            <div className="flex gap-3">
+              <button onClick={guardarAplicacion} disabled={savingApl} className="btn-afa flex-1">
+                {savingApl?'Guardando…':`Guardar${lotesSeleccionados.length>0?' ('+lotesSeleccionados.length+' lotes)':''} + Generar imagen`}
+              </button>
+              <button onClick={()=>{setShowAplModal(false);setLotesSeleccionados([]);}} className="btn-ghost">Cancelar</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Toolbar lotes */}
+      <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="font-semibold text-hi text-sm">Lotes</span>
           <div className="flex gap-1 flex-wrap">
-            <button
-              onClick={()=>setFiltroCultivo('')}
-              className={filtroCultivo===''
-                ? 'text-[10px] font-bold px-2 py-1 rounded bg-base-5 text-hi border border-base-6'
-                : 'text-[10px] font-bold px-2 py-1 rounded bg-base-3 text-lo border border-base-5 hover:border-base-6'}
-            >Todos</button>
-            {cultivosUnicos.map(c=>{
-              const {stroke} = cropColor(c);
-              const isActive = filtroCultivo===c;
-              return (
-                <button key={c} onClick={()=>setFiltroCultivo(c===filtroCultivo?'':c)}
-                  className="text-[10px] font-bold px-2 py-1 rounded border transition-all"
-                  style={{
-                    color: stroke,
-                    background: isActive ? stroke+'22' : 'transparent',
-                    borderColor: isActive ? stroke : '#333',
-                  }}
-                >{c}</button>
-              );
-            })}
+            <button onClick={()=>setFiltroCultivo('')} className={cn('text-[10px] font-bold px-2 py-1 rounded border',filtroCultivo===''?'bg-base-5 text-hi border-base-6':'bg-base-3 text-lo border-base-5 hover:border-base-6')}>Todos</button>
+            {cultivosUnicos.map(c=>{const cc=cropColor(c);return(
+              <button key={c} onClick={()=>setFiltroCultivo(f=>f===c?'':c)}
+                className="text-[10px] font-bold px-2 py-1 rounded border transition-all"
+                style={{color:cc,background:filtroCultivo===c?cc+'22':'transparent',borderColor:filtroCultivo===c?cc:'#333'}}
+              >{c}</button>
+            );})}
           </div>
         </div>
         <div className="flex gap-2 flex-wrap">
           <button onClick={descargarPlantilla} className="btn-ghost text-xs py-1.5 px-3">↓ Plantilla</button>
-          <button onClick={()=>fileRef.current?.click()} disabled={importando||!campanaId} className="btn-ghost text-xs py-1.5 px-3">
-            {importando?'Importando…':'↑ Importar Excel'}
-          </button>
+          <button onClick={()=>fileRef.current?.click()} disabled={importando||!campanaId} className="btn-ghost text-xs py-1.5 px-3">{importando?'Importando…':'↑ Importar'}</button>
           <input ref={fileRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={importar}/>
           {lotes.length>0&&<button onClick={exportar} className="btn-ghost text-xs py-1.5 px-3">↓ Exportar</button>}
           <Link href={`/productores/${productor.id}/lotes/nuevo`} className="btn-primary text-xs py-1.5 px-3">+ Nuevo lote</Link>
@@ -206,27 +433,21 @@ export function ProductorDetail({ productor, campanas }: { productor: Productor;
 
       {msg&&<p className={cn('text-xs rounded px-3 py-2 mb-4',msg.startsWith('✓')?'text-green-400 bg-green-950 border border-green-800':'text-red-400 bg-red-950 border border-red-800')}>{msg}</p>}
 
-      {/* Modal eliminar */}
       {confirmDelete&&(
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 px-4">
           <div className="card p-6 max-w-sm w-full">
             <h3 className="font-bold text-hi mb-1">¿Eliminar lote?</h3>
-            <p className="text-mid text-sm mb-1"><span className="text-red-400 font-semibold">{confirmDelete.nombre}</span></p>
+            <p className="text-red-400 font-semibold text-sm mb-1">{confirmDelete.nombre}</p>
             <p className="text-lo text-xs mb-5">Esta acción no se puede deshacer.</p>
-            <div className="flex gap-3">
-              <button onClick={()=>eliminarLote(confirmDelete.id)} className="btn-danger flex-1">Sí, eliminar</button>
-              <button onClick={()=>setConfirmDelete(null)} className="btn-ghost flex-1">Cancelar</button>
-            </div>
+            <div className="flex gap-3"><button onClick={()=>eliminarLote(confirmDelete.id)} className="btn-danger flex-1">Sí, eliminar</button><button onClick={()=>setConfirmDelete(null)} className="btn-ghost flex-1">Cancelar</button></div>
           </div>
         </div>
       )}
 
-      {loading?(
-        <p className="text-mid text-sm">Cargando lotes…</p>
-      ):lotes.length===0?(
+      {loading?<p className="text-mid text-sm">Cargando lotes…</p>:lotes.length===0?(
         <div className="card p-8 text-center">
-          <p className="text-mid text-sm mb-2">No hay lotes para esta campaña.</p>
-          <div className="flex gap-3 justify-center mt-4">
+          <p className="text-mid text-sm mb-4">No hay lotes para esta campaña.</p>
+          <div className="flex gap-3 justify-center">
             <button onClick={descargarPlantilla} className="btn-ghost text-xs">↓ Plantilla</button>
             <button onClick={()=>fileRef.current?.click()} className="btn-ghost text-xs">↑ Importar</button>
             <Link href={`/productores/${productor.id}/lotes/nuevo`} className="btn-primary text-xs">+ Nuevo lote</Link>
@@ -234,84 +455,48 @@ export function ProductorDetail({ productor, campanas }: { productor: Productor;
         </div>
       ):(
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-          {lotesFiltrados.map((l)=>{
-            const actual=getCultivoActual(l.cultivo,l.cultivo_2);
+          {lotesFiltrados.map(l=>{
+            const actual=l.cultivo||l.cultivo_2;
             const s=CROP_STYLES[actual??'']??DEFAULT_STYLE;
             const cultivos=[l.cultivo,l.cultivo_2].filter(Boolean);
-            const cc = cropColor(actual);
-            return (
-              <div key={l.id} className="aspect-square rounded-card flex flex-col relative overflow-hidden group bg-base-3 border border-base-5 transition-all duration-150 hover:-translate-y-1 hover:border-base-6">
-
-                {/* Barra de color arriba */}
-                <div style={{ height: '4px', background: cc.stroke, width: '100%' }} />
-
-                {/* Hexágono grande con color del cultivo */}
+            const cc=cropColor(actual??null);
+            return(
+              <div key={l.id} className={cn('aspect-square rounded-card flex flex-col relative overflow-hidden group border-2 transition-all duration-150 hover:-translate-y-1',s.cardStyle)}>
+                <div style={{height:'4px',background:cc,width:'100%'}}/>
                 <div className="absolute top-2 right-2 pointer-events-none">
                   <svg width="52" height="46" viewBox="0 0 60 52">
-                    <polygon
-                      points="15,0 45,0 60,26 45,52 15,52 0,26"
-                      fill={cc.fill}
-                      stroke={cc.stroke}
-                      strokeWidth="4"
-                    />
+                    <polygon points="15,0 45,0 60,26 45,52 15,52 0,26" fill={cc+'15'} stroke={cc} strokeWidth="3"/>
                   </svg>
                 </div>
-
-                {/* Link al detalle */}
                 <Link href={`/productores/${productor.id}/lotes/${l.id}`} className="flex flex-col justify-between flex-1 p-3 pb-8">
-                  {/* Nombre con acento de color */}
                   <div>
-                    <p className="text-hi font-bold text-sm leading-tight line-clamp-2 pr-8">{l.nombre}</p>
+                    <p className="text-hi font-bold text-sm leading-tight line-clamp-2 pr-10">{l.nombre}</p>
                     {l.variedad&&<p className="text-[10px] mt-0.5 truncate text-lo">{l.variedad}</p>}
                   </div>
-
-                  {/* Has centradas */}
                   <div className="flex items-baseline justify-center gap-1.5">
-                    <span className="text-hi font-black text-4xl tabular-nums leading-none">{l.hectareas}</span>
-                    <span className="text-mid font-bold text-sm">ha</span>
+                    <span className={cn('font-black text-4xl tabular-nums leading-none',s.numColor)}>{l.hectareas}</span>
+                    <span className={cn('font-bold text-sm',s.numColor)}>ha</span>
                   </div>
-
-                  {/* Cultivos + fecha */}
                   <div>
                     <div className="flex flex-wrap gap-1 mb-1">
                       {cultivos.map((c,i)=>{
-                        const {fill, stroke} = cropColor(c??'');
-                        const esActual = c===actual;
-                        return(
-                          <span key={c}
-                            className="text-[9px] font-bold px-1.5 py-0.5 rounded flex items-center gap-1"
-                            style={{
-                              background: esActual ? fill+'33' : 'rgba(255,255,255,0.04)',
-                              color: esActual ? stroke : '#525252',
-                              border: `1px solid ${esActual ? stroke : '#333'}`,
-                            }}
-                          >
-                            {c}{cultivos.length>1 && !String(c).includes('°') && i===1 ? ' 2°' : ''}
-                          </span>
-                        );
+                        const cs=CROP_STYLES[c??'']??DEFAULT_STYLE;
+                        return <span key={c} className={cn('text-[9px] font-bold px-1.5 py-0.5 rounded',c===actual?cs.badgeStyle:'bg-black/30 text-lo border border-base-5 opacity-60')}>
+                          {c}{cultivos.length>1&&!String(c).includes('°')&&i===1?' 2°':''}
+                        </span>;
                       })}
                     </div>
                     {l.fecha_siembra&&<div className="font-mono text-[9px] text-lo">Siem: {l.fecha_siembra}</div>}
                   </div>
                 </Link>
-
-                {/* Tacho eliminar — abajo derecha */}
-                <button
-                  onClick={()=>setConfirmDelete({id:l.id,nombre:l.nombre})}
-                  className="absolute bottom-2 right-2 w-7 h-7 rounded-full bg-black/60 border border-red-800 text-red-500 opacity-0 group-hover:opacity-100 transition-all hover:bg-red-600 hover:text-white hover:border-red-600 flex items-center justify-center text-sm"
-                  title="Eliminar lote"
-                >
-                  🗑
-                </button>
+                <button onClick={()=>setConfirmDelete({id:l.id,nombre:l.nombre})}
+                  className="absolute bottom-2 right-2 w-7 h-7 rounded-full bg-black/60 border border-red-800 text-red-500 opacity-0 group-hover:opacity-100 transition-all hover:bg-red-600 hover:text-white flex items-center justify-center text-sm"
+                  title="Eliminar lote">🗑</button>
               </div>
             );
           })}
-
           <Link href={`/productores/${productor.id}/lotes/nuevo`} className="aspect-square rounded-card flex items-center justify-center border-2 border-dashed border-base-5 hover:border-amber-500 hover:text-amber-500 text-lo transition-all group">
-            <div className="text-center">
-              <div className="text-4xl font-thin mb-1 group-hover:scale-110 transition-transform">+</div>
-              <div className="text-[10px] uppercase tracking-wider">Nuevo lote</div>
-            </div>
+            <div className="text-center"><div className="text-4xl font-thin mb-1 group-hover:scale-110 transition-transform">+</div><div className="text-[10px] uppercase tracking-wider">Nuevo lote</div></div>
           </Link>
         </div>
       )}
