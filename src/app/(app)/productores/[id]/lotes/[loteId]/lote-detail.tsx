@@ -49,6 +49,8 @@ export function LoteDetail({ lote:initial, productorId, productorNombre, ingenie
   const [aplForm2, setAplForm2] = useState({ fecha: new Date().toISOString().slice(0,10), tipo: 'Herbicida', productos: '', maquinaria: 'M', propio_alq: 'Propio', contratista: '', costo_ha: '', observaciones: '' });
   const [savingApl2, setSavingApl2] = useState(false);
   const [errApl2, setErrApl2] = useState('');
+  const [editandoApl, setEditandoApl] = useState<Aplicacion|null>(null);
+  const [savingEditApl, setSavingEditApl] = useState(false);
 
   const cultivoActual = lote.cultivo || lote.cultivo_2;
   const color = cropColor(cultivoActual??null);
@@ -430,9 +432,127 @@ export function LoteDetail({ lote:initial, productorId, productorNombre, ingenie
     await fetchAplicaciones();
   }
 
+  async function guardarEdicionAplicacion() {
+    if (!editandoApl) return;
+    setSavingEditApl(true);
+    const { error } = await (createClient() as any).from('aplicaciones').update({
+      fecha: editandoApl.fecha,
+      tipo: editandoApl.tipo,
+      productos: editandoApl.productos || null,
+      maquinaria: editandoApl.maquinaria,
+      propio_alq: editandoApl.propio_alq,
+      contratista: editandoApl.contratista || null,
+      costo_ha: editandoApl.costo_ha || null,
+      observaciones: editandoApl.observaciones || null,
+    }).eq('id', editandoApl.id);
+    setSavingEditApl(false);
+    if (error) { alert(error.message); return; }
+    setEditandoApl(null);
+    await fetchAplicaciones();
+  }
+
   return (
     <div className="max-w-2xl mx-auto">
       <canvas ref={canvasRef} className="hidden" />
+
+      {/* Modal editar aplicación */}
+      {editandoApl && (
+        <div className="fixed inset-0 bg-black/80 z-50 flex items-start justify-center overflow-y-auto py-8 px-4">
+          <div className="w-full max-w-lg card p-6 space-y-4" style={{borderColor:'rgba(245,158,11,0.4)'}}>
+            <div className="flex items-center justify-between">
+              <h2 className="font-bold text-hi">Editar aplicación</h2>
+              <button onClick={()=>setEditandoApl(null)} className="text-lo hover:text-hi text-xl">✕</button>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-semibold text-mid mb-1 uppercase tracking-wider">Fecha</label>
+                <input type="date" value={editandoApl.fecha}
+                  onChange={e=>setEditandoApl(a=>a?{...a,fecha:e.target.value}:a)}
+                  className="field"/>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-mid mb-1 uppercase tracking-wider">Tipo</label>
+                <select value={editandoApl.tipo}
+                  onChange={e=>setEditandoApl(a=>a?{...a,tipo:e.target.value}:a)}
+                  className="field">
+                  {['Herbicida','Fungicida','Insecticida','Fertilizante','Fungicida+Insecticida','Otro'].map(t=><option key={t}>{t}</option>)}
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-mid mb-1 uppercase tracking-wider">Productos y dosis</label>
+              <textarea rows={3} value={editandoApl.productos||''}
+                onChange={e=>setEditandoApl(a=>a?{...a,productos:e.target.value}:a)}
+                className="field resize-none"/>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-semibold text-mid mb-1 uppercase tracking-wider">Maquinaria</label>
+                <div className="flex gap-1">
+                  {[['M','🚜'],['D','🚁'],['A','✈']].map(([v,icon])=>(
+                    <button key={v} type="button"
+                      onClick={()=>setEditandoApl(a=>a?{...a,maquinaria:v}:a)}
+                      className={cn('flex-1 py-2 rounded text-sm border transition-all',
+                        editandoApl.maquinaria===v?'bg-ochre text-[#0a0a0a] border-ochre':'bg-base-3 border-base-5 text-mid hover:border-ochre')}
+                    >{icon}</button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-mid mb-1 uppercase tracking-wider">Equipo</label>
+                <div className="flex gap-1">
+                  {['Propio','Alq.'].map(v=>(
+                    <button key={v} type="button"
+                      onClick={()=>setEditandoApl(a=>a?{...a,propio_alq:v==='Alq.'?'Alquilado':'Propio'}:a)}
+                      className={cn('flex-1 py-2 rounded text-xs border transition-all',
+                        (editandoApl.propio_alq==='Propio'&&v==='Propio')||(editandoApl.propio_alq==='Alquilado'&&v==='Alq.')?'bg-ochre text-[#0a0a0a] border-ochre':'bg-base-3 border-base-5 text-mid hover:border-ochre')}
+                    >{v}</button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-mid mb-1 uppercase tracking-wider">Contratista</label>
+              <input value={editandoApl.contratista||''}
+                onChange={e=>setEditandoApl(a=>a?{...a,contratista:e.target.value}:a)}
+                className="field" placeholder="Opcional"/>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-mid mb-1 uppercase tracking-wider">
+                Costo aplicación (U$S/ha)
+                {editandoApl.costo_ha && lote.hectareas &&
+                  <span className="ml-2 text-afa normal-case font-normal">
+                    = U$S {(Number(editandoApl.costo_ha)*lote.hectareas).toLocaleString('es-AR')} total
+                  </span>
+                }
+              </label>
+              <input type="number" step="0.01"
+                value={editandoApl.costo_ha||''}
+                onChange={e=>setEditandoApl(a=>a?{...a,costo_ha:parseFloat(e.target.value)||null}:a)}
+                className="field" placeholder="0.00"/>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-mid mb-1 uppercase tracking-wider">Observaciones</label>
+              <textarea rows={2} value={editandoApl.observaciones||''}
+                onChange={e=>setEditandoApl(a=>a?{...a,observaciones:e.target.value}:a)}
+                className="field resize-none"/>
+            </div>
+
+            <div className="flex gap-3 pt-1">
+              <button onClick={guardarEdicionAplicacion} disabled={savingEditApl} className="btn-primary flex-1">
+                {savingEditApl?'Guardando…':'Guardar cambios'}
+              </button>
+              <button onClick={()=>setEditandoApl(null)} className="btn-ghost">Cancelar</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Header */}
       <div className="flex items-start justify-between mb-2">
@@ -670,8 +790,14 @@ export function LoteDetail({ lote:initial, productorId, productorNombre, ingenie
                         {a.productos && <p className="text-hi text-sm">{a.productos}</p>}
                         {a.observaciones && <p className="text-lo text-xs mt-1 italic">{a.observaciones}</p>}
                       </div>
-                      <div className="flex gap-4 items-center">
-                        {/* Compartir imagen por WhatsApp */}
+                      <div className="flex gap-3 items-center opacity-0 group-hover:opacity-100 transition-opacity">
+                        {/* Editar */}
+                        <button
+                          onClick={()=>setEditandoApl({...a})}
+                          title="Editar aplicación"
+                          className="text-ochre hover:text-ochre-light text-lg"
+                        >✏</button>
+                        {/* Compartir imagen */}
                         {a.imagen_url ? (
                           <button
                             onClick={async () => {
@@ -682,20 +808,19 @@ export function LoteDetail({ lote:initial, productorId, productorNombre, ingenie
                                 if (navigator.share && navigator.canShare?.({ files: [file] })) {
                                   await navigator.share({ files: [file], title: `Aplicación ${a.tipo} - ${a.fecha}` });
                                 } else {
-                                  // Fallback: abrir en nueva pestaña
                                   window.open(a.imagen_url!, '_blank');
                                 }
                               } catch {}
                             }}
                             title="Compartir imagen"
-                            className="text-afa hover:text-afa-light text-2xl opacity-0 group-hover:opacity-100 transition-opacity"
+                            className="text-afa hover:text-afa-light text-2xl"
                           >📷</button>
                         ) : null}
-                        {/* Tacho separado y más chico */}
+                        {/* Tacho bien separado */}
                         <button
                           onClick={()=>eliminarAplicacion(a.id)}
                           title="Eliminar"
-                          className="text-base-6 hover:text-red-500 text-sm opacity-0 group-hover:opacity-100 transition-opacity ml-2"
+                          className="text-base-6 hover:text-red-500 text-sm ml-3"
                         >🗑</button>
                       </div>
                     </div>
