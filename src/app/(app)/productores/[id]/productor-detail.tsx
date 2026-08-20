@@ -17,6 +17,22 @@ const APL_VACIO = { fecha:new Date().toISOString().slice(0,10), tipo:'Herbicida'
 
 const CULTIVOS_ORDEN = ['Soja','Maíz','Trigo','Girasol','Sorgo','Cebada','Alfalfa','Otro'];
 
+const CULTIVO_ABREV: Record<string,string> = {
+  'Soja':'SOJ', 'Maíz':'MAI', 'Trigo':'TRI', 'Girasol':'GIR',
+  'Sorgo':'SOR', 'Cebada':'CEB', 'Alfalfa':'ALF', 'Otro':'OTR',
+};
+const CULTIVOS_VALIDOS = ['Soja','Maíz','Trigo','Girasol','Sorgo','Cebada','Alfalfa','Otro'];
+
+function abrevCultivo(c: string | null): string {
+  if (!c) return '';
+  return CULTIVO_ABREV[c] ?? c.slice(0,3).toUpperCase();
+}
+
+function esCultivo(c: string | null): boolean {
+  if (!c) return false;
+  return CULTIVOS_VALIDOS.includes(c);
+}
+
 function cropColor(c:string|null){
   if(!c) return '#a3a3a3';
   const n=c.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
@@ -519,7 +535,7 @@ export function ProductorDetail({ productor, campanas, ingeniero }:{ productor:P
       ):(
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
           {lotesFiltrados.map(l=>{
-            const actual=l.cultivo||l.cultivo_2;
+            const actual=esCultivo(l.cultivo)?l.cultivo:esCultivo(l.cultivo_2)?l.cultivo_2:null;
             const s=CROP_STYLES[actual??'']??DEFAULT_STYLE;
             const cultivos=[l.cultivo,l.cultivo_2].filter(Boolean);
             const cc=cropColor(actual??null);
@@ -542,10 +558,11 @@ export function ProductorDetail({ productor, campanas, ingeniero }:{ productor:P
                   </div>
                   <div>
                     <div className="flex flex-wrap gap-1 mb-1">
-                      {cultivos.map((c,i)=>{
+                      {cultivos.filter(c=>esCultivo(c)).map((c,i)=>{
                         const cs=CROP_STYLES[c??'']??DEFAULT_STYLE;
-                        return <span key={c} className={cn('text-[9px] font-bold px-1.5 py-0.5 rounded',c===actual?cs.badgeStyle:'bg-black/30 text-lo border border-base-5 opacity-60')}>
-                          {c}{cultivos.length>1&&!String(c).includes('°')&&i===1?' 2°':''}
+                        const isActual = c===actual;
+                        return <span key={c} className={cn('text-[9px] font-bold px-1.5 py-0.5 rounded',isActual?cs.badgeStyle:'bg-black/30 text-lo border border-base-5 opacity-60')}>
+                          {abrevCultivo(c)}{cultivos.filter(x=>esCultivo(x)).length>1&&i===1?' 2°':''}
                         </span>;
                       })}
                     </div>
