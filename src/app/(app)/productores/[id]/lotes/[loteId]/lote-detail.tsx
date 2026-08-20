@@ -670,12 +670,33 @@ export function LoteDetail({ lote:initial, productorId, productorNombre, ingenie
                         {a.productos && <p className="text-hi text-sm">{a.productos}</p>}
                         {a.observaciones && <p className="text-lo text-xs mt-1 italic">{a.observaciones}</p>}
                       </div>
-                      <div className="flex gap-2 items-center opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="flex gap-4 items-center">
+                        {/* Compartir imagen por WhatsApp */}
                         {a.imagen_url ? (
-                          <a href={a.imagen_url} target="_blank" download title="Ver/Descargar imagen"
-                            className="text-ochre hover:text-ochre-light text-lg">⬇</a>
+                          <button
+                            onClick={async () => {
+                              try {
+                                const resp = await fetch(a.imagen_url!);
+                                const blob = await resp.blob();
+                                const file = new File([blob], `aplicacion-${a.fecha}.png`, { type: 'image/png' });
+                                if (navigator.share && navigator.canShare?.({ files: [file] })) {
+                                  await navigator.share({ files: [file], title: `Aplicación ${a.tipo} - ${a.fecha}` });
+                                } else {
+                                  // Fallback: abrir en nueva pestaña
+                                  window.open(a.imagen_url!, '_blank');
+                                }
+                              } catch {}
+                            }}
+                            title="Compartir imagen"
+                            className="text-afa hover:text-afa-light text-2xl opacity-0 group-hover:opacity-100 transition-opacity"
+                          >📷</button>
                         ) : null}
-                        <button onClick={()=>eliminarAplicacion(a.id)} title="Eliminar" className="text-red-500 hover:text-red-400 text-lg">🗑</button>
+                        {/* Tacho separado y más chico */}
+                        <button
+                          onClick={()=>eliminarAplicacion(a.id)}
+                          title="Eliminar"
+                          className="text-base-6 hover:text-red-500 text-sm opacity-0 group-hover:opacity-100 transition-opacity ml-2"
+                        >🗑</button>
                       </div>
                     </div>
                   </div>
