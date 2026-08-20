@@ -432,9 +432,45 @@ export function LoteDetail({ lote:initial, productorId, productorNombre, ingenie
     await fetchAplicaciones();
   }
 
-  async function guardarEdicionAplicacion() {
+  async function guardarEdicionAplicacion(regenerarImagen = false) {
     if (!editandoApl) return;
     setSavingEditApl(true);
+
+    let imagenUrl = editandoApl.imagen_url;
+
+    // Regenerar imagen si se pide
+    if (regenerarImagen) {
+      const canvas = canvasRef.current;
+      if (canvas) {
+        const formParaCanvas = {
+          fecha: editandoApl.fecha,
+          tipo: editandoApl.tipo,
+          productos: editandoApl.productos || '',
+          maquinaria: editandoApl.maquinaria,
+          propio_alq: editandoApl.propio_alq,
+          contratista: editandoApl.contratista || '',
+          costo_ha: String(editandoApl.costo_ha || ''),
+          observaciones: editandoApl.observaciones || '',
+        };
+        dibujarCanvasLote(canvas, formParaCanvas);
+        const blob: Blob | null = await new Promise(r => canvas.toBlob(b => r(b), 'image/png'));
+        if (blob) {
+          const sb = createClient() as any;
+          const fileName = `${Date.now()}-${editandoApl.tipo.toLowerCase()}-${editandoApl.fecha}.png`;
+          const { data: up, error: upErr } = await sb.storage.from('aplicaciones').upload(fileName, blob, { contentType: 'image/png' });
+          if (!upErr && up) {
+            const { data: urlData } = sb.storage.from('aplicaciones').getPublicUrl(fileName);
+            imagenUrl = urlData?.publicUrl ?? imagenUrl;
+          }
+          // Descargar también
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a'); a.href = url;
+          a.download = `orden-${editandoApl.tipo.toLowerCase()}-${editandoApl.fecha}.png`; a.click();
+          URL.revokeObjectURL(url);
+        }
+      }
+    }
+
     const { error } = await (createClient() as any).from('aplicaciones').update({
       fecha: editandoApl.fecha,
       tipo: editandoApl.tipo,
@@ -444,6 +480,7 @@ export function LoteDetail({ lote:initial, productorId, productorNombre, ingenie
       contratista: editandoApl.contratista || null,
       costo_ha: editandoApl.costo_ha || null,
       observaciones: editandoApl.observaciones || null,
+      imagen_url: imagenUrl,
     }).eq('id', editandoApl.id);
     setSavingEditApl(false);
     if (error) { alert(error.message); return; }
@@ -544,12 +581,15 @@ export function LoteDetail({ lote:initial, productorId, productorNombre, ingenie
                 className="field resize-none"/>
             </div>
 
-            <div className="flex gap-3 pt-1">
-              <button onClick={guardarEdicionAplicacion} disabled={savingEditApl} className="btn-primary flex-1">
-                {savingEditApl?'Guardando…':'Guardar cambios'}
+            <div className="flex gap-2 pt-1 flex-wrap">
+              <button onClick={()=>guardarEdicionAplicacion(false)} disabled={savingEditApl} className="btn-ghost flex-1">
+                {savingEditApl?'Guardando…':'Guardar sin imagen'}
               </button>
-              <button onClick={()=>setEditandoApl(null)} className="btn-ghost">Cancelar</button>
+              <button onClick={()=>guardarEdicionAplicacion(true)} disabled={savingEditApl} className="btn-primary flex-1">
+                {savingEditApl?'Generando…':'Guardar + Regenerar imagen 📷'}
+              </button>
             </div>
+            <button onClick={()=>setEditandoApl(null)} className="text-lo text-xs hover:text-mid w-full text-center pt-1">Cancelar</button>
           </div>
         </div>
       )}
