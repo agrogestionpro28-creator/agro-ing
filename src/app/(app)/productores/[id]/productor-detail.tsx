@@ -84,11 +84,39 @@ export function ProductorDetail({ productor, campanas, ingeniero }:{ productor:P
 
   const campana = campanas.find(c=>c.id===campanaId);
   const totalHas = lotes.reduce((s,l)=>s+Number(l.hectareas),0);
-  const cultivosUnicos = Array.from(new Set(lotes.flatMap(l=>[l.cultivo,l.cultivo_2].filter(Boolean) as string[]))).sort();
-  const lotesFiltrados = filtroCultivo ? lotes.filter(l=>l.cultivo===filtroCultivo||l.cultivo_2===filtroCultivo) : lotes;
+  // Cultivos únicos diferenciando Soja 1° y Soja 2°
+  const cultivosUnicos = Array.from(new Set(lotes.flatMap(l => {
+    const tags: string[] = [];
+    if (esCultivo(l.cultivo)) {
+      // Si tiene doble cultivo y el 1ro no es soja, la soja es 2°
+      const sojaEs2 = l.cultivo === 'Soja' && esCultivo(l.cultivo_2) && l.cultivo !== l.cultivo_2;
+      // Si el 1ro es trigo/cebada y el 2do es soja → 1ro=trigo, 2do=soja 2°
+      const primerEsBase = ['Trigo','Cebada'].includes(l.cultivo??'') && l.cultivo_2 === 'Soja';
+      tags.push(primerEsBase ? l.cultivo! : l.cultivo!);
+      if (primerEsBase) tags.push('Soja 2°');
+    }
+    if (esCultivo(l.cultivo_2) && !(['Trigo','Cebada'].includes(l.cultivo??'') && l.cultivo_2 === 'Soja')) {
+      tags.push(l.cultivo_2!);
+    }
+    return tags;
+  }))).sort();
+
+  const lotesFiltrados = filtroCultivo === 'Soja 2°'
+    ? lotes.filter(l => ['Trigo','Cebada'].includes(l.cultivo??'') && l.cultivo_2 === 'Soja')
+    : filtroCultivo === 'Soja'
+    ? lotes.filter(l => l.cultivo === 'Soja' || (l.cultivo_2 === 'Soja' && !['Trigo','Cebada'].includes(l.cultivo??'')))
+    : filtroCultivo
+    ? lotes.filter(l => l.cultivo === filtroCultivo || l.cultivo_2 === filtroCultivo)
+    : lotes;
 
   // Lotes filtrados en modal aplicación
-  const lotesAplFiltrados = aplFiltro ? lotes.filter(l=>l.cultivo===aplFiltro||l.cultivo_2===aplFiltro) : lotes;
+  const lotesAplFiltrados = aplFiltro === 'Soja 2°'
+    ? lotes.filter(l => ['Trigo','Cebada'].includes(l.cultivo??'') && l.cultivo_2 === 'Soja')
+    : aplFiltro === 'Soja'
+    ? lotes.filter(l => l.cultivo === 'Soja' || (l.cultivo_2 === 'Soja' && !['Trigo','Cebada'].includes(l.cultivo??'')))
+    : aplFiltro
+    ? lotes.filter(l => l.cultivo === aplFiltro || l.cultivo_2 === aplFiltro)
+    : lotes;
   const hasTotalesApl = lotesSeleccionados.reduce((s,lid)=>{
     const l=lotes.find(x=>x.id===lid); return s+(l?.hectareas||0);
   },0);
