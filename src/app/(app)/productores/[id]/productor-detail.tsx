@@ -550,7 +550,7 @@ export function ProductorDetail({ productor, campanas, ingeniero }:{ productor:P
                 <Link href={`/productores/${productor.id}/lotes/${l.id}`} className="flex flex-col justify-between flex-1 p-3 pb-8">
                   <div>
                     <p className="text-hi font-bold text-sm leading-tight line-clamp-2 pr-10">{l.nombre}</p>
-                    {l.variedad&&<p className="text-[10px] mt-0.5 truncate text-lo">{l.variedad}</p>}
+                    {l.variedad&&<p className="text-[10px] mt-0.5 truncate text-white font-bold opacity-80">{l.variedad}</p>}
                   </div>
                   <div className="flex items-baseline justify-center gap-1.5">
                     <span className={cn('font-black text-4xl tabular-nums leading-none',s.numColor)}>{l.hectareas}</span>
