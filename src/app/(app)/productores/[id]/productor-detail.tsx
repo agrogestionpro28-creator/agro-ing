@@ -33,6 +33,21 @@ function esCultivo(c: string | null): boolean {
   return CULTIVOS_VALIDOS.includes(c);
 }
 
+function normalizarCultivo(c: string): string | null {
+  if (!c) return null;
+  const n = c.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim();
+  if (n.includes('soja'))    return 'Soja';
+  if (n.includes('maiz') || n.includes('maíz')) return 'Maíz';
+  if (n.includes('trigo'))   return 'Trigo';
+  if (n.includes('girasol')) return 'Girasol';
+  if (n.includes('sorgo'))   return 'Sorgo';
+  if (n.includes('cebada'))  return 'Cebada';
+  if (n.includes('alfalfa')) return 'Alfalfa';
+  if (n.includes('otro'))    return 'Otro';
+  // Si tiene texto pero no matchea ningún cultivo conocido → null (es variedad probablemente)
+  return null;
+}
+
 function cropColor(c:string|null){
   if(!c) return '#a3a3a3';
   const n=c.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
