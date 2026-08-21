@@ -350,7 +350,10 @@ export function ProductorDetail({ productor, campanas, ingeniero }:{ productor:P
 
   // Crop styles for lot cards
   const CROP_STYLES: Record<string,{cardStyle:string;numColor:string;badgeStyle:string}> = {
+    // Soja 1° — verde brillante
     'Soja':    {cardStyle:'bg-green-950 border-green-500 shadow-[0_0_18px_rgba(34,197,94,0.4)]',    numColor:'text-green-400',  badgeStyle:'bg-green-900 text-green-400 border border-green-500'},
+    // Soja 2° — verde oscuro tenue (viene después del trigo/cebada)
+    'Soja 2°': {cardStyle:'bg-emerald-950 border-emerald-700 shadow-[0_0_12px_rgba(16,185,129,0.25)]', numColor:'text-emerald-600', badgeStyle:'bg-emerald-950 text-emerald-500 border border-emerald-700'},
     'Maíz':    {cardStyle:'bg-lime-950  border-lime-500  shadow-[0_0_18px_rgba(132,204,22,0.4)]',   numColor:'text-lime-400',   badgeStyle:'bg-lime-900 text-lime-400 border border-lime-500'},
     'Trigo':   {cardStyle:'bg-amber-950 border-amber-500 shadow-[0_0_18px_rgba(245,158,11,0.4)]',   numColor:'text-amber-400',  badgeStyle:'bg-amber-900 text-amber-400 border border-amber-500'},
     'Cebada':  {cardStyle:'bg-yellow-950 border-yellow-500 shadow-[0_0_18px_rgba(234,179,8,0.4)]',  numColor:'text-yellow-400', badgeStyle:'bg-yellow-900 text-yellow-400 border border-yellow-500'},
@@ -536,7 +539,10 @@ export function ProductorDetail({ productor, campanas, ingeniero }:{ productor:P
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
           {lotesFiltrados.map(l=>{
             const actual=esCultivo(l.cultivo)?l.cultivo:esCultivo(l.cultivo_2)?l.cultivo_2:null;
-            const s=CROP_STYLES[actual??'']??DEFAULT_STYLE;
+            // Si el cultivo actual es Soja pero es el 2do cultivo (hay un 1ro antes), usar estilo Soja 2°
+            const esSegundoCultivo = actual === 'Soja' && esCultivo(l.cultivo) && esCultivo(l.cultivo_2) && l.cultivo !== 'Soja';
+            const styleKey = esSegundoCultivo ? 'Soja 2°' : (actual ?? '');
+            const s=CROP_STYLES[styleKey]??DEFAULT_STYLE;
             const cultivos=[l.cultivo,l.cultivo_2].filter(Boolean);
             const cc=cropColor(actual??null);
             return(
