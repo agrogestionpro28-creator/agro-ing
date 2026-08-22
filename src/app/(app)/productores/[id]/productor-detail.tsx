@@ -433,6 +433,98 @@ export function ProductorDetail({ productor, campanas, ingeniero }:{ productor:P
         </div>
       </div>
 
+      {/* Gráfico circular + stats de distribución */}
+      {lotes.length > 0 && (
+        <div className="flex items-center gap-6 mb-5 card p-4">
+          {/* Mini donut SVG */}
+          {(() => {
+            const CROP_COLORS: Record<string,string> = {
+              'Soja':'#22c55e','Maíz':'#84cc16','Trigo':'#f59e0b',
+              'Girasol':'#38bdf8','Sorgo':'#ea580c','Cebada':'#fbbf24','Alfalfa':'#34d399',
+            };
+            // Agrupar has por cultivo
+            const grupos: Record<string,number> = {};
+            lotes.forEach(l => {
+              const c = l.cultivo || 'Sin cultivo';
+              grupos[c] = (grupos[c]||0) + Number(l.hectareas);
+              if(l.cultivo_2) grupos[l.cultivo_2] = (grupos[l.cultivo_2]||0) + 0; // no duplicar has
+            });
+            const total = Object.values(grupos).reduce((s,v)=>s+v,0);
+            const entries = Object.entries(grupos).sort((a,b)=>b[1]-a[1]);
+            
+            // SVG donut
+            const R = 40, cx = 50, cy = 50, strokeW = 14;
+            const circumference = 2 * Math.PI * R;
+            let offset = 0;
+            const segments = entries.map(([name, has]) => {
+              const pct = has / total;
+              const dasharray = pct * circumference;
+              const seg = { name, has, pct, dasharray, offset, color: CROP_COLORS[name] ?? '#525252' };
+              offset += dasharray;
+              return seg;
+            });
+
+            return (
+              <div className="flex items-center gap-5">
+                {/* Donut */}
+                <div className="relative shrink-0">
+                  <svg width="100" height="100" viewBox="0 0 100 100">
+                    <circle cx={cx} cy={cy} r={R} fill="none" stroke="#222" strokeWidth={strokeW}/>
+                    {segments.map((s,i) => (
+                      <circle key={i} cx={cx} cy={cy} r={R} fill="none"
+                        stroke={s.color} strokeWidth={strokeW}
+                        strokeDasharray={`${s.dasharray} ${circumference - s.dasharray}`}
+                        strokeDashoffset={-(s.offset - circumference/4)}
+                        style={{transition:'stroke-dasharray 0.5s'}}
+                      />
+                    ))}
+                  </svg>
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="text-center">
+                      <div className="text-hi font-black text-sm leading-none">{Math.round(total)}</div>
+                      <div className="text-lo text-[9px]">ha</div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Leyenda */}
+                <div className="flex flex-wrap gap-x-4 gap-y-1.5">
+                  {segments.map(s => (
+                    <button key={s.name}
+                      onClick={()=>setFiltroCultivo(f=>f===s.name?'':s.name)}
+                      className={cn('flex items-center gap-1.5 text-xs transition-all',
+                        filtroCultivo===s.name?'opacity-100':'opacity-70 hover:opacity-100')}
+                    >
+                      <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{background:s.color}}/>
+                      <span className="text-hi font-semibold">{s.name}</span>
+                      <span className="text-lo">{Math.round(s.has)} ha</span>
+                      <span className="text-lo">({Math.round(s.pct*100)}%)</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* Stats filtro activo */}
+          <div className="ml-auto text-right shrink-0">
+            {filtroCultivo ? (
+              <div>
+                <p className="text-lo text-xs uppercase tracking-wider">{filtroCultivo}</p>
+                <p className="text-hi font-black text-xl">
+                  {lotesFiltrados.length} lotes · {Math.round(lotesFiltrados.reduce((s,l)=>s+Number(l.hectareas),0))} ha
+                </p>
+              </div>
+            ) : (
+              <div>
+                <p className="text-lo text-xs uppercase tracking-wider">Total</p>
+                <p className="text-hi font-black text-xl">{lotes.length} lotes · {Math.round(totalHas)} ha</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Modal aplicación */}
       {showAplModal && (
         <div className="fixed inset-0 bg-black/80 z-50 flex items-start justify-center overflow-y-auto py-8 px-4">
