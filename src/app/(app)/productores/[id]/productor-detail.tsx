@@ -12,7 +12,7 @@ type Campana = { id:string; nombre:string; fecha_inicio:string; fecha_fin:string
 type Lote = { id:string; nombre:string; hectareas:number; cultivo:string|null; cultivo_2:string|null; variedad:string|null; fecha_siembra:string|null; notas:string|null };
 type Ingeniero = { nombre:string; apellido:string|null; matricula:string|null };
 
-const TIPOS_APL = ['Herbicida','Fungicida','Insecticida','Fertilizante','Fungicida+Insecticida','Otro'];
+const TIPOS_APL = ['Herbicida','Fungicida','Insecticida','Fertilizante','Fungicida+Insecticida','Fertilizante+Fungicida','Inoculante','Otro'];
 const APL_VACIO = { fecha:new Date().toISOString().slice(0,10), tipo:'Herbicida', productos:'', maquinaria:'M', propio_alq:'Propio', contratista:'', costo_ha:'', observaciones:'' };
 
 const CULTIVOS_ORDEN = ['Soja','Maíz','Trigo','Girasol','Sorgo','Cebada','Alfalfa','Otro'];
@@ -197,13 +197,13 @@ export function ProductorDetail({ productor, campanas, ingeniero }:{ productor:P
     setImportando(false); if(fileRef.current) fileRef.current.value='';
   }
 
-  async function guardarAplicacion(){
+  async function guardarAplicacion(generarImagen = true){
     if(!lotesSeleccionados.length){setErrApl('Seleccioná al menos un lote');return;}
     setSavingApl(true); setErrApl('');
     const costoHa=parseFloat(aplForm.costo_ha)||null;
 
-    // 1. Generar imagen en canvas
-    const imagenBlob = await generarImagenBlob();
+    // 1. Generar imagen en canvas (solo si se pidió)
+    const imagenBlob = generarImagen ? await generarImagenBlob() : null;
 
     // 2. Subir a Storage
     let imagenUrl: string|null = null;
@@ -590,12 +590,15 @@ export function ProductorDetail({ productor, campanas, ingeniero }:{ productor:P
 
             {errApl&&<p className="text-xs text-red-400 bg-red-950 border border-red-800 rounded px-3 py-2">{errApl}</p>}
 
-            <div className="flex gap-3">
-              <button onClick={guardarAplicacion} disabled={savingApl} className="btn-afa flex-1">
-                {savingApl?'Guardando…':`Guardar${lotesSeleccionados.length>0?' ('+lotesSeleccionados.length+' lotes)':''} + Generar imagen`}
+            <div className="flex gap-2 flex-wrap">
+              <button onClick={()=>guardarAplicacion(true)} disabled={savingApl} className="btn-afa flex-1">
+                {savingApl?'Guardando…':`📷 Guardar + Imagen${lotesSeleccionados.length>0?' ('+lotesSeleccionados.length+')':''}`}
               </button>
-              <button onClick={()=>{setShowAplModal(false);setLotesSeleccionados([]);}} className="btn-ghost">Cancelar</button>
+              <button onClick={()=>guardarAplicacion(false)} disabled={savingApl} className="btn-ghost flex-1">
+                {savingApl?'Guardando…':'💾 Guardar solo'}
+              </button>
             </div>
+            <button onClick={()=>{setShowAplModal(false);setLotesSeleccionados([]);setErrApl('');}} className="text-lo text-xs hover:text-mid w-full text-center pt-1">Cancelar</button>
           </div>
         </div>
       )}
