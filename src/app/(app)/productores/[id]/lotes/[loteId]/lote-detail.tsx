@@ -863,14 +863,14 @@ export function LoteDetail({ lote:initial, productorId, productorNombre, ingenie
                 <div className="col-span-2">
                   <label className="block text-xs font-semibold text-mid mb-2 uppercase tracking-wider">
                     Tipo
-                    {tiposSeleccionados.length > 0 && <span className="ml-2 text-ochre normal-case tracking-normal font-normal">{tiposSeleccionados.join(' + ')}</span>}
+                    {tiposSeleccionados2.length > 0 && <span className="ml-2 text-ochre normal-case tracking-normal font-normal">{tiposSeleccionados2.join(' + ')}</span>}
                   </label>
                   <div className="flex flex-wrap gap-2">
                     {TIPOS_BASE.map(t => {
-                      const sel = tiposSeleccionados.includes(t);
+                      const sel = tiposSeleccionados2.includes(t);
                       return (
                         <button key={t} type="button"
-                          onClick={() => setTiposSeleccionados(prev => sel ? prev.filter(x=>x!==t) : [...prev,t])}
+                          onClick={() => setTiposSeleccionados2(prev => sel ? prev.filter(x=>x!==t) : [...prev,t])}
                           className={cn('px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all',
                             sel ? 'bg-ochre text-[#0a0a0a] border-ochre' : 'bg-base-3 border-base-5 text-mid hover:border-ochre')}
                         >{t}</button>
