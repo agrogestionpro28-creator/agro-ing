@@ -222,9 +222,9 @@ export function ProductorDetail({ productor, campanas, ingeniero }:{ productor:P
     // 3. Insertar aplicaciones con imagen_url
     const inserts=lotesSeleccionados.map(lid=>{
       const l=lotes.find(x=>x.id===lid);
-      return{ lote_id:lid, fecha:aplForm.fecha, tipo:aplForm.tipo,
-        productos:aplForm.productos||null, maquinaria:aplForm.maquinaria,
+      return{ lote_id:lid, fecha:aplForm.fecha,
         tipo: tiposSeleccionados.length > 0 ? tiposSeleccionados.join(' + ') : 'Otro',
+        productos:aplForm.productos||null, maquinaria:aplForm.maquinaria,
         propio_alq:aplForm.propio_alq, contratista:aplForm.contratista.trim()||null,
         costo_ha:costoHa, hectareas_apl:l?.hectareas||0,
         observaciones:aplForm.observaciones||null, imagen_url:imagenUrl };
