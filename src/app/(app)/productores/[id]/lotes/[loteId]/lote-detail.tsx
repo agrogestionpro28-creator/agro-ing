@@ -860,7 +860,24 @@ export function LoteDetail({ lote:initial, productorId, productorNombre, ingenie
 
               <div className="grid grid-cols-2 gap-3">
                 <div><label className="block text-xs font-semibold text-mid mb-1 uppercase tracking-wider">Fecha</label><input type="date" value={aplForm.fecha} onChange={e=>setAplForm(f=>({...f,fecha:e.target.value}))} className="field" /></div>
-                <div><label className="block text-xs font-semibold text-mid mb-1 uppercase tracking-wider">Tipo</label><select value={aplForm.tipo} onChange={e=>setAplForm(f=>({...f,tipo:e.target.value}))} className="field">{TIPOS_APL.map(t=><option key={t}>{t}</option>)}</select></div>
+                <div className="col-span-2">
+                  <label className="block text-xs font-semibold text-mid mb-2 uppercase tracking-wider">
+                    Tipo
+                    {tiposSeleccionados.length > 0 && <span className="ml-2 text-ochre normal-case tracking-normal font-normal">{tiposSeleccionados.join(' + ')}</span>}
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    {TIPOS_BASE.map(t => {
+                      const sel = tiposSeleccionados.includes(t);
+                      return (
+                        <button key={t} type="button"
+                          onClick={() => setTiposSeleccionados(prev => sel ? prev.filter(x=>x!==t) : [...prev,t])}
+                          className={cn('px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all',
+                            sel ? 'bg-ochre text-[#0a0a0a] border-ochre' : 'bg-base-3 border-base-5 text-mid hover:border-ochre')}
+                        >{t}</button>
+                      );
+                    })}
+                  </div>
+                </div>
               </div>
 
               <div>
