@@ -12,7 +12,7 @@ type Campana = { id:string; nombre:string; fecha_inicio:string; fecha_fin:string
 type Lote = { id:string; nombre:string; hectareas:number; cultivo:string|null; cultivo_2:string|null; variedad:string|null; fecha_siembra:string|null; notas:string|null };
 type Ingeniero = { nombre:string; apellido:string|null; matricula:string|null };
 
-const TIPOS_APL = ['Herbicida','Fungicida','Insecticida','Fertilizante','Fungicida+Insecticida','Fertilizante+Fungicida','Inoculante','Otro'];
+const TIPOS_BASE = ['Herbicida','Fungicida','Insecticida','Fertilizante','Inoculante','Otro'];
 const APL_VACIO = { fecha:new Date().toISOString().slice(0,10), tipo:'Herbicida', productos:'', maquinaria:'M', propio_alq:'Propio', contratista:'', costo_ha:'', observaciones:'' };
 
 const CULTIVOS_ORDEN = ['Soja','Maíz','Trigo','Girasol','Sorgo','Cebada','Alfalfa','Otro'];
@@ -92,6 +92,7 @@ export function ProductorDetail({ productor, campanas, ingeniero }:{ productor:P
 
   // Aplicación
   const [aplForm, setAplForm] = useState({...APL_VACIO});
+  const [tiposSeleccionados, setTiposSeleccionados] = useState<string[]>(['Herbicida']);
   const [lotesSeleccionados, setLotesSeleccionados] = useState<string[]>([]);
   const [savingApl, setSavingApl] = useState(false);
   const [aplFiltro, setAplFiltro] = useState('');
@@ -223,6 +224,7 @@ export function ProductorDetail({ productor, campanas, ingeniero }:{ productor:P
       const l=lotes.find(x=>x.id===lid);
       return{ lote_id:lid, fecha:aplForm.fecha, tipo:aplForm.tipo,
         productos:aplForm.productos||null, maquinaria:aplForm.maquinaria,
+        tipo: tiposSeleccionados.length > 0 ? tiposSeleccionados.join(' + ') : 'Otro',
         propio_alq:aplForm.propio_alq, contratista:aplForm.contratista.trim()||null,
         costo_ha:costoHa, hectareas_apl:l?.hectareas||0,
         observaciones:aplForm.observaciones||null, imagen_url:imagenUrl };
@@ -239,7 +241,7 @@ export function ProductorDetail({ productor, campanas, ingeniero }:{ productor:P
       URL.revokeObjectURL(url);
     }
 
-    setAplForm({...APL_VACIO}); setLotesSeleccionados([]); setShowAplModal(false);
+    setAplForm({...APL_VACIO}); setLotesSeleccionados([]); setTiposSeleccionados(['Herbicida']); setShowAplModal(false);
   }
 
   async function generarImagenBlob(): Promise<Blob|null> {
@@ -546,7 +548,27 @@ export function ProductorDetail({ productor, campanas, ingeniero }:{ productor:P
 
             <div className="grid grid-cols-2 gap-3">
               <div><label className="block text-xs font-semibold text-mid mb-1 uppercase tracking-wider">Fecha</label><input type="date" value={aplForm.fecha} onChange={e=>setAplForm(f=>({...f,fecha:e.target.value}))} className="field"/></div>
-              <div><label className="block text-xs font-semibold text-mid mb-1 uppercase tracking-wider">Tipo</label><select value={aplForm.tipo} onChange={e=>setAplForm(f=>({...f,tipo:e.target.value}))} className="field">{TIPOS_APL.map(t=><option key={t}>{t}</option>)}</select></div>
+              <div className="col-span-2">
+                <label className="block text-xs font-semibold text-mid mb-2 uppercase tracking-wider">
+                  Tipo de aplicación
+                  {tiposSeleccionados.length > 0 && <span className="ml-2 text-ochre normal-case tracking-normal font-normal">{tiposSeleccionados.join(' + ')}</span>}
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {TIPOS_BASE.map(t => {
+                    const sel = tiposSeleccionados.includes(t);
+                    return (
+                      <button key={t} type="button"
+                        onClick={() => setTiposSeleccionados(prev =>
+                          sel ? prev.filter(x => x !== t) : [...prev, t]
+                        )}
+                        className={cn('px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all',
+                          sel ? 'bg-ochre text-[#0a0a0a] border-ochre' : 'bg-base-3 border-base-5 text-mid hover:border-ochre hover:text-ochre'
+                        )}
+                      >{t}</button>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
 
             <div><label className="block text-xs font-semibold text-mid mb-1 uppercase tracking-wider">Productos y dosis</label><textarea rows={2} value={aplForm.productos} onChange={e=>setAplForm(f=>({...f,productos:e.target.value}))} className="field resize-none" placeholder="Ej: Roundup 3 l/ha + Banvel 0.5 l/ha"/></div>
