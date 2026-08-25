@@ -10,7 +10,7 @@ function fmtFecha(iso: string): string {
 }
 
 const CULTIVOS = ['Soja','Maíz','Trigo','Girasol','Sorgo','Cebada','Alfalfa','Otro'];
-const TIPOS_APL = ['Herbicida','Fungicida','Insecticida','Fertilizante','Fungicida+Insecticida','Otro'];
+const TIPOS_APL = ['Herbicida','Fungicida','Insecticida','Fertilizante','Fungicida+Insecticida','Fertilizante+Fungicida','Inoculante','Otro'];
 
 function cropColor(c: string | null) {
   if (!c) return '#a3a3a3';
@@ -392,14 +392,14 @@ export function LoteDetail({ lote:initial, productorId, productorNombre, ingenie
     ctx.textAlign = 'left';
   }
 
-  async function guardarAplicacionLote() {
+  async function guardarAplicacionLote(generarImagen = true) {
     setSavingApl2(true); setErrApl2('');
     const costoHa = parseFloat(aplForm2.costo_ha) || null;
 
-    // Generar imagen
+    // Generar imagen (solo si se pidió)
     const canvas = canvasRef.current;
     let imagenUrl: string | null = null;
-    if (canvas) {
+    if (generarImagen && canvas) {
       dibujarCanvasLote(canvas, aplForm2);
       const blob: Blob | null = await new Promise(r => canvas.toBlob(b => r(b), 'image/png'));
       if (blob) {
@@ -703,9 +703,14 @@ export function LoteDetail({ lote:initial, productorId, productorNombre, ingenie
                 <textarea rows={2} value={aplForm2.observaciones} onChange={e=>setAplForm2(f=>({...f,observaciones:e.target.value}))} className="field resize-none" placeholder="Condiciones, recomendaciones..."/>
               </div>
               {errApl2 && <p className="text-xs text-red-400 bg-red-950 border border-red-800 rounded px-3 py-2">{errApl2}</p>}
-              <button onClick={guardarAplicacionLote} disabled={savingApl2} className="btn-primary w-full">
-                {savingApl2 ? 'Guardando y generando imagen…' : 'Guardar + Generar imagen'}
-              </button>
+              <div className="flex gap-2">
+                <button onClick={()=>guardarAplicacionLote(true)} disabled={savingApl2} className="btn-primary flex-1">
+                  {savingApl2 ? 'Guardando…' : '📷 Guardar + Imagen'}
+                </button>
+                <button onClick={()=>guardarAplicacionLote(false)} disabled={savingApl2} className="btn-ghost flex-1">
+                  {savingApl2 ? 'Guardando…' : '💾 Guardar solo'}
+                </button>
+              </div>
             </div>
           )}
 
