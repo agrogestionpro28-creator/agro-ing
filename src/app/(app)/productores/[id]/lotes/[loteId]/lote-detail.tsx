@@ -52,17 +52,49 @@ export function LoteDetail({ lote:initial, productorId, productorNombre, ingenie
   const [tiposSeleccionados2, setTiposSeleccionados2] = useState<string[]>(['Herbicida']);
   const [editandoApl, setEditandoApl] = useState<Aplicacion|null>(null);
   const [savingEditApl, setSavingEditApl] = useState(false);
+  const [fertilizaciones, setFertilizaciones] = useState<any[]>([]);
+  const [showFertiForm, setShowFertiForm] = useState(false);
+  const [fertiForm, setFertiForm] = useState({ fecha: new Date().toISOString().slice(0,10), momento: 'siembra', productos: '', observaciones: '' });
+  const [savingFerti, setSavingFerti] = useState(false);
 
   const cultivoActual = lote.cultivo || lote.cultivo_2;
   const color = cropColor(cultivoActual??null);
   const maqLabel: Record<string,string> = { M:'🚜 Mosquito', D:'🚁 Dron', A:'✈ Avión' };
 
-  useEffect(() => { fetchAplicaciones(); fetchLotesProductor(); }, [lote.id]);
+  useEffect(() => { fetchAplicaciones(); fetchLotesProductor(); fetchFertilizaciones(); }, [lote.id]);
 
   async function fetchAplicaciones() {
     const { data } = await (createClient() as any).from('aplicaciones')
       .select('*').eq('lote_id', lote.id).order('fecha', { ascending: false });
     setAplicaciones(data ?? []);
+  }
+
+  async function fetchFertilizaciones() {
+    const { data } = await (createClient() as any).from('fertilizaciones')
+      .select('*').eq('lote_id', lote.id).order('fecha', { ascending: false });
+    setFertilizaciones(data ?? []);
+  }
+
+  async function guardarFertilizacion() {
+    if (!fertiForm.productos.trim()) return;
+    setSavingFerti(true);
+    const { error } = await (createClient() as any).from('fertilizaciones').insert({
+      lote_id: lote.id,
+      fecha: fertiForm.fecha,
+      momento: fertiForm.momento,
+      productos: fertiForm.productos.trim(),
+      observaciones: fertiForm.observaciones.trim() || null,
+    });
+    setSavingFerti(false);
+    if (error) return;
+    setFertiForm({ fecha: new Date().toISOString().slice(0,10), momento: 'siembra', productos: '', observaciones: '' });
+    setShowFertiForm(false);
+    await fetchFertilizaciones();
+  }
+
+  async function eliminarFertilizacion(id: string) {
+    await (createClient() as any).from('fertilizaciones').delete().eq('id', id);
+    await fetchFertilizaciones();
   }
 
   async function fetchLotesProductor() {
@@ -618,6 +650,8 @@ export function LoteDetail({ lote:initial, productorId, productorNombre, ingenie
             {lote.variedad && <span className="text-mid">· {lote.variedad}</span>}
             {lote.fecha_siembra && <span className="text-mid">· Siem: {lote.fecha_siembra}</span>}
           </div>
+          {lote.fecha_siembra && !lote.fecha_cosecha && <p className="text-lo text-xs mt-1">📅 Siembra: {lote.fecha_siembra}</p>}
+          {(lote as any).fecha_cosecha && <p className="text-money text-xs mt-1 font-semibold">🌾 Cosecha: {(lote as any).fecha_cosecha}</p>}
           {lote.notas && <p className="text-lo text-xs mt-2 italic">{lote.notas}</p>}
         </div>
       )}
@@ -652,7 +686,72 @@ export function LoteDetail({ lote:initial, productorId, productorNombre, ingenie
             </div>
           </div>
 
-          {/* Form aplicación rápida desde el lote */}
+          {/* Fertilizaciones */}
+          <>
+            <div className="flex items-center justify-between mb-3 mt-6">
+              <h2 className="font-semibold text-hi text-sm">Fertilizaciones</h2>
+              <button onClick={()=>setShowFertiForm(!showFertiForm)} className="btn-ghost text-xs py-1.5 px-3">
+                {showFertiForm ? '✕ Cancelar' : '+ Agregar fertilización'}
+              </button>
+            </div>
+
+            {showFertiForm && (
+              <div className="card p-4 space-y-3 mb-4" style={{borderColor:'rgba(52,211,153,0.3)'}}>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-mid mb-1 uppercase tracking-wider">Fecha</label>
+                    <input type="date" value={fertiForm.fecha} onChange={e=>setFertiForm(f=>({...f,fecha:e.target.value}))} className="field"/>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-mid mb-1 uppercase tracking-wider">Momento</label>
+                    <select value={fertiForm.momento} onChange={e=>setFertiForm(f=>({...f,momento:e.target.value}))} className="field">
+                      {['siembra','macollaje','v4','v6','r1','r3','otro'].map(m=>(
+                        <option key={m} value={m}>{m.charAt(0).toUpperCase()+m.slice(1)}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-mid mb-1 uppercase tracking-wider">Productos y dosis *</label>
+                  <textarea rows={2} value={fertiForm.productos}
+                    onChange={e=>setFertiForm(f=>({...f,productos:e.target.value}))}
+                    className="field resize-none"
+                    placeholder="Ej: Urea 100 kg/ha + MAP 50 kg/ha"/>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-mid mb-1 uppercase tracking-wider">Observaciones</label>
+                  <input value={fertiForm.observaciones} onChange={e=>setFertiForm(f=>({...f,observaciones:e.target.value}))} className="field" placeholder="Opcional"/>
+                </div>
+                <button onClick={guardarFertilizacion} disabled={savingFerti} className="btn-primary w-full text-xs py-2">
+                  {savingFerti ? 'Guardando…' : 'Guardar fertilización'}
+                </button>
+              </div>
+            )}
+
+            {fertilizaciones.length === 0 ? (
+              <p className="text-lo text-xs text-center py-3">Sin fertilizaciones registradas.</p>
+            ) : (
+              <div className="space-y-2 mb-4">
+                {fertilizaciones.map(f => (
+                  <div key={f.id} className="card p-3 group flex items-start justify-between gap-2"
+                    style={{borderColor:'rgba(52,211,153,0.15)'}}>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
+                        <span className="text-[#34d399] font-bold text-xs">{f.fecha}</span>
+                        <span className="text-[10px] px-2 py-0.5 rounded bg-base-4 text-mid border border-base-5 capitalize">{f.momento}</span>
+                      </div>
+                      <p className="text-hi text-sm">{f.productos}</p>
+                      {f.observaciones && <p className="text-lo text-xs mt-1 italic">{f.observaciones}</p>}
+                    </div>
+                    <button onClick={()=>eliminarFertilizacion(f.id)}
+                      className="text-base-6 hover:text-red-500 text-sm opacity-0 group-hover:opacity-100 transition-opacity">🗑</button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
+
+      {/* Form aplicación rápida desde el lote */}
           {showAplForm2 && (
             <div className="card p-5 space-y-4 mb-4" style={{borderColor:'rgba(46,170,110,0.4)'}}>
               <p className="text-xs text-afa font-semibold">Lote: {lote.nombre} · {lote.hectareas} ha</p>
