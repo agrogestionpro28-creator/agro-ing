@@ -10,7 +10,7 @@ function fmtFecha(iso: string): string {
 }
 
 const CULTIVOS = ['Soja','Maíz','Trigo','Girasol','Sorgo','Cebada','Alfalfa','Otro'];
-const TIPOS_APL = ['Herbicida','Fungicida','Insecticida','Fertilizante','Fungicida+Insecticida','Fertilizante+Fungicida','Inoculante','Otro'];
+const TIPOS_BASE = ['Herbicida','Fungicida','Insecticida','Fertilizante','Inoculante','Otro'];
 
 function cropColor(c: string | null) {
   if (!c) return '#a3a3a3';
@@ -49,6 +49,7 @@ export function LoteDetail({ lote:initial, productorId, productorNombre, ingenie
   const [aplForm2, setAplForm2] = useState({ fecha: new Date().toISOString().slice(0,10), tipo: 'Herbicida', productos: '', maquinaria: 'M', propio_alq: 'Propio', contratista: '', costo_ha: '', observaciones: '' });
   const [savingApl2, setSavingApl2] = useState(false);
   const [errApl2, setErrApl2] = useState('');
+  const [tiposSeleccionados2, setTiposSeleccionados2] = useState<string[]>(['Herbicida']);
   const [editandoApl, setEditandoApl] = useState<Aplicacion|null>(null);
   const [savingEditApl, setSavingEditApl] = useState(false);
 
@@ -428,6 +429,7 @@ export function LoteDetail({ lote:initial, productorId, productorNombre, ingenie
     setSavingApl2(false);
     if (error) { setErrApl2(error.message); return; }
     setAplForm2({ fecha: new Date().toISOString().slice(0,10), tipo: 'Herbicida', productos: '', maquinaria: 'M', propio_alq: 'Propio', contratista: '', costo_ha: '', observaciones: '' });
+    setTiposSeleccionados2(['Herbicida']);
     setShowAplForm2(false);
     await fetchAplicaciones();
   }
@@ -656,10 +658,23 @@ export function LoteDetail({ lote:initial, productorId, productorNombre, ingenie
               <p className="text-xs text-afa font-semibold">Lote: {lote.nombre} · {lote.hectareas} ha</p>
               <div className="grid grid-cols-2 gap-3">
                 <div><label className="block text-xs font-semibold text-mid mb-1 uppercase tracking-wider">Fecha</label><input type="date" value={aplForm2.fecha} onChange={e=>setAplForm2(f=>({...f,fecha:e.target.value}))} className="field"/></div>
-                <div><label className="block text-xs font-semibold text-mid mb-1 uppercase tracking-wider">Tipo</label>
-                  <select value={aplForm2.tipo} onChange={e=>setAplForm2(f=>({...f,tipo:e.target.value}))} className="field">
-                    {['Herbicida','Fungicida','Insecticida','Fertilizante','Fungicida+Insecticida','Otro'].map(t=><option key={t}>{t}</option>)}
-                  </select>
+                <div className="col-span-2">
+                  <label className="block text-xs font-semibold text-mid mb-2 uppercase tracking-wider">
+                    Tipo
+                    {tiposSeleccionados2.length > 0 && <span className="ml-2 text-ochre normal-case tracking-normal font-normal">{tiposSeleccionados2.join(' + ')}</span>}
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    {TIPOS_BASE.map(t => {
+                      const sel = tiposSeleccionados2.includes(t);
+                      return (
+                        <button key={t} type="button"
+                          onClick={() => setTiposSeleccionados2(prev => sel ? prev.filter(x=>x!==t) : [...prev,t])}
+                          className={cn('px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all',
+                            sel ? 'bg-ochre text-[#0a0a0a] border-ochre' : 'bg-base-3 border-base-5 text-mid hover:border-ochre')}
+                        >{t}</button>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
               <div><label className="block text-xs font-semibold text-mid mb-1 uppercase tracking-wider">Productos y dosis</label>
