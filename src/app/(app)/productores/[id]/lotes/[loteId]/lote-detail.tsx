@@ -25,7 +25,7 @@ function cropColor(c: string | null) {
   return '#a3a3a3';
 }
 
-type Lote = { id:string; productor_id:string; campana_id:string; nombre:string; hectareas:number; cultivo:string|null; cultivo_2:string|null; variedad:string|null; fecha_siembra:string|null; notas:string|null };
+type Lote = { id:string; productor_id:string; campana_id:string; nombre:string; hectareas:number; cultivo:string|null; cultivo_2:string|null; variedad:string|null; fecha_siembra:string|null; fecha_cosecha:string|null; notas:string|null };
 type LoteSimple = { id:string; nombre:string; hectareas:number; cultivo:string|null };
 type Aplicacion = { id:string; lote_id:string; fecha:string; tipo:string; productos:string|null; maquinaria:string; propio_alq:string; contratista:string|null; costo_ha:number|null; hectareas_apl:number|null; observaciones:string|null; imagen_url:string|null };
 type Ingeniero = { nombre:string; apellido:string|null; matricula:string|null; telefono:string|null };
@@ -651,7 +651,7 @@ export function LoteDetail({ lote:initial, productorId, productorNombre, ingenie
             {lote.fecha_siembra && <span className="text-mid">· Siem: {lote.fecha_siembra}</span>}
           </div>
           {lote.fecha_siembra && !lote.fecha_cosecha && <p className="text-lo text-xs mt-1">📅 Siembra: {lote.fecha_siembra}</p>}
-          {(lote as any).fecha_cosecha && <p className="text-money text-xs mt-1 font-semibold">🌾 Cosecha: {(lote as any).fecha_cosecha}</p>}
+          {lote.fecha_cosecha && <p className="text-money text-xs mt-1 font-semibold">🌾 Cosecha: {lote.fecha_cosecha}</p>}
           {lote.notas && <p className="text-lo text-xs mt-2 italic">{lote.notas}</p>}
         </div>
       )}
