@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useCampana } from '@/components/layout/app-shell';
-import { cn } from '@/lib/utils';
+import { cn, fmtFecha } from '@/lib/utils';
 
 type Productor = { id: string; razon_social: string; localidad: string | null; activo: boolean };
 type Campana = { id: string; nombre: string };
