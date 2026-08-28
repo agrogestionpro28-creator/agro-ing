@@ -23,3 +23,10 @@ export function getCampanaFromAnio(anio: number) {
     fecha_fin: `${anio + 1}-05-19`,
   };
 }
+
+export function fmtFecha(iso: string | null | undefined): string {
+  if (!iso) return '—';
+  const [y, m, d] = iso.split('-');
+  if (!y || !m || !d) return iso;
+  return `${d}/${m}/${y}`;
+}
