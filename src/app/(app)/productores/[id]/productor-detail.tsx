@@ -210,7 +210,7 @@ export function ProductorDetail({ productor, campanas, ingeniero }:{ productor:P
     let imagenUrl: string|null = null;
     if(imagenBlob) {
       const sb = createClient() as any;
-      const fileName = `${Date.now()}-${aplForm.tipo.toLowerCase()}-${aplForm.fecha}.png`;
+      const fileName = `${Date.now()}-${aplForm.tipo.toLowerCase()}-${fmtFecha(aplForm.fecha)}.png`;
       const { data: uploadData, error: uploadError } = await sb.storage
         .from('aplicaciones').upload(fileName, imagenBlob, { contentType:'image/png', upsert:false });
       if(!uploadError && uploadData) {
@@ -237,7 +237,7 @@ export function ProductorDetail({ productor, campanas, ingeniero }:{ productor:P
     if(imagenBlob) {
       const url=URL.createObjectURL(imagenBlob);
       const a=document.createElement('a'); a.href=url;
-      a.download=`orden-${aplForm.tipo.toLowerCase()}-${aplForm.fecha}.png`; a.click();
+      a.download=`orden-${aplForm.tipo.toLowerCase()}-${fmtFecha(aplForm.fecha)}.png`; a.click();
       URL.revokeObjectURL(url);
     }
 
@@ -255,7 +255,7 @@ export function ProductorDetail({ productor, campanas, ingeniero }:{ productor:P
     dibujarCanvas(canvas);
     const url=canvas.toDataURL('image/png');
     const a=document.createElement('a'); a.href=url;
-    a.download=`orden-${aplForm.tipo.toLowerCase()}-${aplForm.fecha}.png`; a.click();
+    a.download=`orden-${aplForm.tipo.toLowerCase()}-${fmtFecha(aplForm.fecha)}.png`; a.click();
   }
 
   function fmtFecha(iso: string): string {
@@ -547,7 +547,7 @@ export function ProductorDetail({ productor, campanas, ingeniero }:{ productor:P
             </div>
 
             <div className="grid grid-cols-2 gap-3">
-              <div><label className="block text-xs font-semibold text-mid mb-1 uppercase tracking-wider">Fecha</label><input type="date" value={aplForm.fecha} onChange={e=>setAplForm(f=>({...f,fecha:e.target.value}))} className="field"/></div>
+              <div><label className="block text-xs font-semibold text-mid mb-1 uppercase tracking-wider">Fecha</label><input type="date" value={fmtFecha(aplForm.fecha)} onChange={e=>setAplForm(f=>({...f,fecha:e.target.value}))} className="field"/></div>
               <div className="col-span-2">
                 <label className="block text-xs font-semibold text-mid mb-2 uppercase tracking-wider">
                   Tipo de aplicación
@@ -707,7 +707,7 @@ export function ProductorDetail({ productor, campanas, ingeniero }:{ productor:P
                         </span>;
                       })}
                     </div>
-                    {l.fecha_siembra&&<div className="font-mono text-[9px] text-lo">Siem: {l.fecha_siembra}</div>}
+                    {l.fecha_siembra&&<div className="font-mono text-[9px] text-lo">Siem: {fmtFecha(l.fecha_siembra)}</div>}
                   </div>
                 </Link>
                 <button onClick={()=>setConfirmDelete({id:l.id,nombre:l.nombre})}
