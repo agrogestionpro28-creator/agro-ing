@@ -312,7 +312,7 @@ export function LoteDetail({ lote:initial, productorId, productorNombre, ingenie
     // Descargar
     const url = canvas.toDataURL('image/png');
     const a = document.createElement('a');
-    a.href = url; a.download = `orden-aplicacion-${apl.fecha}.png`; a.click();
+    a.href = url; a.download = `orden-aplicacion-${fmtFecha(apl.fecha)}.png`; a.click();
   }
 
   function compartirWhatsApp(apl: Aplicacion) {
@@ -322,7 +322,7 @@ export function LoteDetail({ lote:initial, productorId, productorNombre, ingenie
     setTimeout(() => {
       canvas.toBlob(blob => {
         if (!blob) return;
-        const file = new File([blob], `orden-${apl.fecha}.png`, { type:'image/png' });
+        const file = new File([blob], `orden-${fmtFecha(apl.fecha)}.png`, { type:'image/png' });
         if (navigator.share && navigator.canShare?.({files:[file]})) {
           navigator.share({ files:[file], title:'Orden de aplicación' });
         }
@@ -437,7 +437,7 @@ export function LoteDetail({ lote:initial, productorId, productorNombre, ingenie
       const blob: Blob | null = await new Promise(r => canvas.toBlob(b => r(b), 'image/png'));
       if (blob) {
         const sb = createClient() as any;
-        const fileName = `${Date.now()}-${aplForm2.tipo.toLowerCase()}-${aplForm2.fecha}.png`;
+        const fileName = `${Date.now()}-${aplForm2.tipo.toLowerCase()}-${fmtFecha(aplForm2.fecha)}.png`;
         const { data: up, error: upErr } = await sb.storage.from('aplicaciones').upload(fileName, blob, { contentType: 'image/png' });
         if (!upErr && up) {
           const { data: urlData } = sb.storage.from('aplicaciones').getPublicUrl(fileName);
@@ -446,7 +446,7 @@ export function LoteDetail({ lote:initial, productorId, productorNombre, ingenie
         // Descargar localmente
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a'); a.href = url;
-        a.download = `orden-${aplForm2.tipo.toLowerCase()}-${aplForm2.fecha}.png`; a.click();
+        a.download = `orden-${aplForm2.tipo.toLowerCase()}-${fmtFecha(aplForm2.fecha)}.png`; a.click();
         URL.revokeObjectURL(url);
       }
     }
@@ -490,7 +490,7 @@ export function LoteDetail({ lote:initial, productorId, productorNombre, ingenie
         const blob: Blob | null = await new Promise(r => canvas.toBlob(b => r(b), 'image/png'));
         if (blob) {
           const sb = createClient() as any;
-          const fileName = `${Date.now()}-${editandoApl.tipo.toLowerCase()}-${editandoApl.fecha}.png`;
+          const fileName = `${Date.now()}-${editandoApl.tipo.toLowerCase()}-${fmtFecha(editandoApl.fecha)}.png`;
           const { data: up, error: upErr } = await sb.storage.from('aplicaciones').upload(fileName, blob, { contentType: 'image/png' });
           if (!upErr && up) {
             const { data: urlData } = sb.storage.from('aplicaciones').getPublicUrl(fileName);
@@ -499,7 +499,7 @@ export function LoteDetail({ lote:initial, productorId, productorNombre, ingenie
           // Descargar también
           const url = URL.createObjectURL(blob);
           const a = document.createElement('a'); a.href = url;
-          a.download = `orden-${editandoApl.tipo.toLowerCase()}-${editandoApl.fecha}.png`; a.click();
+          a.download = `orden-${editandoApl.tipo.toLowerCase()}-${fmtFecha(editandoApl.fecha)}.png`; a.click();
           URL.revokeObjectURL(url);
         }
       }
@@ -538,7 +538,7 @@ export function LoteDetail({ lote:initial, productorId, productorNombre, ingenie
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs font-semibold text-mid mb-1 uppercase tracking-wider">Fecha</label>
-                <input type="date" value={editandoApl.fecha}
+                <input type="date" value={fmtFecha(editandoApl.fecha)}
                   onChange={e=>setEditandoApl(a=>a?{...a,fecha:e.target.value}:a)}
                   className="field"/>
               </div>
@@ -648,10 +648,10 @@ export function LoteDetail({ lote:initial, productorId, productorNombre, ingenie
             {lote.cultivo && <span style={{color:cropColor(lote.cultivo)}} className="font-semibold">{lote.cultivo}{lote.cultivo_2?' →':''}</span>}
             {lote.cultivo_2 && <span style={{color:cropColor(lote.cultivo_2)}} className="font-semibold">{lote.cultivo_2} 2°</span>}
             {lote.variedad && <span className="text-mid">· {lote.variedad}</span>}
-            {lote.fecha_siembra && <span className="text-mid">· Siem: {lote.fecha_siembra}</span>}
+            {lote.fecha_siembra && <span className="text-mid">· Siem: {fmtFecha(lote.fecha_siembra)}</span>}
           </div>
-          {lote.fecha_siembra && !lote.fecha_cosecha && <p className="text-lo text-xs mt-1">📅 Siembra: {lote.fecha_siembra}</p>}
-          {lote.fecha_cosecha && <p className="text-money text-xs mt-1 font-semibold">🌾 Cosecha: {lote.fecha_cosecha}</p>}
+          {lote.fecha_siembra && !lote.fecha_cosecha && <p className="text-lo text-xs mt-1">📅 Siembra: {fmtFecha(lote.fecha_siembra)}</p>}
+          {lote.fecha_cosecha && <p className="text-money text-xs mt-1 font-semibold">🌾 Cosecha: {fmtFecha(lote.fecha_cosecha)}</p>}
           {lote.notas && <p className="text-lo text-xs mt-2 italic">{lote.notas}</p>}
         </div>
       )}
@@ -666,7 +666,7 @@ export function LoteDetail({ lote:initial, productorId, productorNombre, ingenie
             <div><label className="block text-xs font-semibold text-mid mb-1 uppercase tracking-wider">Cultivo</label><select value={form.cultivo} onChange={e=>setForm(f=>({...f,cultivo:e.target.value}))} className="field"><option value="">—</option>{CULTIVOS.map(c=><option key={c}>{c}</option>)}</select></div>
             <div><label className="block text-xs font-semibold text-mid mb-1 uppercase tracking-wider">2° Cultivo</label><select value={form.cultivo_2} onChange={e=>setForm(f=>({...f,cultivo_2:e.target.value}))} className="field"><option value="">—</option>{CULTIVOS.map(c=><option key={c}>{c}</option>)}</select></div>
             <div><label className="block text-xs font-semibold text-mid mb-1 uppercase tracking-wider">Variedad</label><input value={form.variedad} onChange={e=>setForm(f=>({...f,variedad:e.target.value}))} className="field" /></div>
-            <div><label className="block text-xs font-semibold text-mid mb-1 uppercase tracking-wider">Fecha siembra</label><input type="date" value={form.fecha_siembra} onChange={e=>setForm(f=>({...f,fecha_siembra:e.target.value}))} className="field" /></div>
+            <div><label className="block text-xs font-semibold text-mid mb-1 uppercase tracking-wider">Fecha siembra</label><input type="date" value={fmtFecha(form.fecha_siembra)} onChange={e=>setForm(f=>({...f,fecha_siembra:e.target.value}))} className="field" /></div>
           </div>
           <div><label className="block text-xs font-semibold text-mid mb-1 uppercase tracking-wider">Notas</label><textarea rows={2} value={form.notas} onChange={e=>setForm(f=>({...f,notas:e.target.value}))} className="field resize-none" /></div>
           {err && <p className="text-xs text-red-400 bg-red-950 border border-red-800 rounded px-3 py-2">{err}</p>}
@@ -700,7 +700,7 @@ export function LoteDetail({ lote:initial, productorId, productorNombre, ingenie
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="block text-xs font-semibold text-mid mb-1 uppercase tracking-wider">Fecha</label>
-                    <input type="date" value={fertiForm.fecha} onChange={e=>setFertiForm(f=>({...f,fecha:e.target.value}))} className="field"/>
+                    <input type="date" value={fmtFecha(fertiForm.fecha)} onChange={e=>setFertiForm(f=>({...f,fecha:e.target.value}))} className="field"/>
                   </div>
                   <div>
                     <label className="block text-xs font-semibold text-mid mb-1 uppercase tracking-wider">Momento</label>
@@ -737,7 +737,7 @@ export function LoteDetail({ lote:initial, productorId, productorNombre, ingenie
                     style={{borderColor:'rgba(52,211,153,0.15)'}}>
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1 flex-wrap">
-                        <span className="text-[#34d399] font-bold text-xs">{f.fecha}</span>
+                        <span className="text-[#34d399] font-bold text-xs">{fmtFecha(f.fecha)}</span>
                         <span className="text-[10px] px-2 py-0.5 rounded bg-base-4 text-mid border border-base-5 capitalize">{f.momento}</span>
                       </div>
                       <p className="text-hi text-sm">{f.productos}</p>
@@ -756,7 +756,7 @@ export function LoteDetail({ lote:initial, productorId, productorNombre, ingenie
             <div className="card p-5 space-y-4 mb-4" style={{borderColor:'rgba(46,170,110,0.4)'}}>
               <p className="text-xs text-afa font-semibold">Lote: {lote.nombre} · {lote.hectareas} ha</p>
               <div className="grid grid-cols-2 gap-3">
-                <div><label className="block text-xs font-semibold text-mid mb-1 uppercase tracking-wider">Fecha</label><input type="date" value={aplForm2.fecha} onChange={e=>setAplForm2(f=>({...f,fecha:e.target.value}))} className="field"/></div>
+                <div><label className="block text-xs font-semibold text-mid mb-1 uppercase tracking-wider">Fecha</label><input type="date" value={fmtFecha(aplForm2.fecha)} onChange={e=>setAplForm2(f=>({...f,fecha:e.target.value}))} className="field"/></div>
                 <div className="col-span-2">
                   <label className="block text-xs font-semibold text-mid mb-2 uppercase tracking-wider">
                     Tipo
@@ -859,7 +859,7 @@ export function LoteDetail({ lote:initial, productorId, productorNombre, ingenie
               </div>
 
               <div className="grid grid-cols-2 gap-3">
-                <div><label className="block text-xs font-semibold text-mid mb-1 uppercase tracking-wider">Fecha</label><input type="date" value={aplForm.fecha} onChange={e=>setAplForm(f=>({...f,fecha:e.target.value}))} className="field" /></div>
+                <div><label className="block text-xs font-semibold text-mid mb-1 uppercase tracking-wider">Fecha</label><input type="date" value={fmtFecha(aplForm.fecha)} onChange={e=>setAplForm(f=>({...f,fecha:e.target.value}))} className="field" /></div>
                 <div className="col-span-2">
                   <label className="block text-xs font-semibold text-mid mb-2 uppercase tracking-wider">
                     Tipo
@@ -955,7 +955,7 @@ export function LoteDetail({ lote:initial, productorId, productorNombre, ingenie
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex-1">
                         <div className="flex items-center gap-2 flex-wrap mb-1">
-                          <span className="text-ochre font-bold text-xs">{a.fecha}</span>
+                          <span className="text-ochre font-bold text-xs">{fmtFecha(a.fecha)}</span>
                           <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-base-4 text-mid border border-base-5">{a.tipo}</span>
                           <span className="text-[10px] text-lo">{maqLabel[a.maquinaria]??a.maquinaria}</span>
                           <span className="text-[10px] text-lo">{a.propio_alq}</span>
@@ -980,9 +980,9 @@ export function LoteDetail({ lote:initial, productorId, productorNombre, ingenie
                               try {
                                 const resp = await fetch(a.imagen_url!);
                                 const blob = await resp.blob();
-                                const file = new File([blob], `aplicacion-${a.fecha}.png`, { type: 'image/png' });
+                                const file = new File([blob], `aplicacion-${fmtFecha(a.fecha)}.png`, { type: 'image/png' });
                                 if (navigator.share && navigator.canShare?.({ files: [file] })) {
-                                  await navigator.share({ files: [file], title: `Aplicación ${a.tipo} - ${a.fecha}` });
+                                  await navigator.share({ files: [file], title: `Aplicación ${a.tipo} - ${fmtFecha(a.fecha)}` });
                                 } else {
                                   window.open(a.imagen_url!, '_blank');
                                 }
