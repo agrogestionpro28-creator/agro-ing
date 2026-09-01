@@ -538,7 +538,7 @@ export function LoteDetail({ lote:initial, productorId, productorNombre, ingenie
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs font-semibold text-mid mb-1 uppercase tracking-wider">Fecha</label>
-                <input type="date" value={fmtFecha(editandoApl.fecha)}
+                <input type="date" value={editandoApl.fecha}
                   onChange={e=>setEditandoApl(a=>a?{...a,fecha:e.target.value}:a)}
                   className="field"/>
               </div>
@@ -666,7 +666,7 @@ export function LoteDetail({ lote:initial, productorId, productorNombre, ingenie
             <div><label className="block text-xs font-semibold text-mid mb-1 uppercase tracking-wider">Cultivo</label><select value={form.cultivo} onChange={e=>setForm(f=>({...f,cultivo:e.target.value}))} className="field"><option value="">—</option>{CULTIVOS.map(c=><option key={c}>{c}</option>)}</select></div>
             <div><label className="block text-xs font-semibold text-mid mb-1 uppercase tracking-wider">2° Cultivo</label><select value={form.cultivo_2} onChange={e=>setForm(f=>({...f,cultivo_2:e.target.value}))} className="field"><option value="">—</option>{CULTIVOS.map(c=><option key={c}>{c}</option>)}</select></div>
             <div><label className="block text-xs font-semibold text-mid mb-1 uppercase tracking-wider">Variedad</label><input value={form.variedad} onChange={e=>setForm(f=>({...f,variedad:e.target.value}))} className="field" /></div>
-            <div><label className="block text-xs font-semibold text-mid mb-1 uppercase tracking-wider">Fecha siembra</label><input type="date" value={fmtFecha(form.fecha_siembra)} onChange={e=>setForm(f=>({...f,fecha_siembra:e.target.value}))} className="field" /></div>
+            <div><label className="block text-xs font-semibold text-mid mb-1 uppercase tracking-wider">Fecha siembra</label><input type="date" value={form.fecha_siembra} onChange={e=>setForm(f=>({...f,fecha_siembra:e.target.value}))} className="field" /></div>
           </div>
           <div><label className="block text-xs font-semibold text-mid mb-1 uppercase tracking-wider">Notas</label><textarea rows={2} value={form.notas} onChange={e=>setForm(f=>({...f,notas:e.target.value}))} className="field resize-none" /></div>
           {err && <p className="text-xs text-red-400 bg-red-950 border border-red-800 rounded px-3 py-2">{err}</p>}
@@ -700,7 +700,7 @@ export function LoteDetail({ lote:initial, productorId, productorNombre, ingenie
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="block text-xs font-semibold text-mid mb-1 uppercase tracking-wider">Fecha</label>
-                    <input type="date" value={fmtFecha(fertiForm.fecha)} onChange={e=>setFertiForm(f=>({...f,fecha:e.target.value}))} className="field"/>
+                    <input type="date" value={fertiForm.fecha} onChange={e=>setFertiForm(f=>({...f,fecha:e.target.value}))} className="field"/>
                   </div>
                   <div>
                     <label className="block text-xs font-semibold text-mid mb-1 uppercase tracking-wider">Momento</label>
@@ -756,7 +756,7 @@ export function LoteDetail({ lote:initial, productorId, productorNombre, ingenie
             <div className="card p-5 space-y-4 mb-4" style={{borderColor:'rgba(46,170,110,0.4)'}}>
               <p className="text-xs text-afa font-semibold">Lote: {lote.nombre} · {lote.hectareas} ha</p>
               <div className="grid grid-cols-2 gap-3">
-                <div><label className="block text-xs font-semibold text-mid mb-1 uppercase tracking-wider">Fecha</label><input type="date" value={fmtFecha(aplForm2.fecha)} onChange={e=>setAplForm2(f=>({...f,fecha:e.target.value}))} className="field"/></div>
+                <div><label className="block text-xs font-semibold text-mid mb-1 uppercase tracking-wider">Fecha</label><input type="date" value={aplForm2.fecha} onChange={e=>setAplForm2(f=>({...f,fecha:e.target.value}))} className="field"/></div>
                 <div className="col-span-2">
                   <label className="block text-xs font-semibold text-mid mb-2 uppercase tracking-wider">
                     Tipo
@@ -859,7 +859,7 @@ export function LoteDetail({ lote:initial, productorId, productorNombre, ingenie
               </div>
 
               <div className="grid grid-cols-2 gap-3">
-                <div><label className="block text-xs font-semibold text-mid mb-1 uppercase tracking-wider">Fecha</label><input type="date" value={fmtFecha(aplForm.fecha)} onChange={e=>setAplForm(f=>({...f,fecha:e.target.value}))} className="field" /></div>
+                <div><label className="block text-xs font-semibold text-mid mb-1 uppercase tracking-wider">Fecha</label><input type="date" value={aplForm.fecha} onChange={e=>setAplForm(f=>({...f,fecha:e.target.value}))} className="field" /></div>
                 <div className="col-span-2">
                   <label className="block text-xs font-semibold text-mid mb-2 uppercase tracking-wider">
                     Tipo
