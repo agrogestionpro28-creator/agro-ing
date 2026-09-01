@@ -547,7 +547,7 @@ export function ProductorDetail({ productor, campanas, ingeniero }:{ productor:P
             </div>
 
             <div className="grid grid-cols-2 gap-3">
-              <div><label className="block text-xs font-semibold text-mid mb-1 uppercase tracking-wider">Fecha</label><input type="date" value={fmtFecha(aplForm.fecha)} onChange={e=>setAplForm(f=>({...f,fecha:e.target.value}))} className="field"/></div>
+              <div><label className="block text-xs font-semibold text-mid mb-1 uppercase tracking-wider">Fecha</label><input type="date" value={aplForm.fecha} onChange={e=>setAplForm(f=>({...f,fecha:e.target.value}))} className="field"/></div>
               <div className="col-span-2">
                 <label className="block text-xs font-semibold text-mid mb-2 uppercase tracking-wider">
                   Tipo de aplicación
