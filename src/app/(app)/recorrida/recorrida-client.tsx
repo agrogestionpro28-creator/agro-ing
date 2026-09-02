@@ -136,7 +136,7 @@ export function RecorridaClient({ productores, campanas }: { productores: Produc
     // Merges
     ws['!merges'] = merges;
 
-    XLSX.utils.book_append_sheet(wb, ws, `Recorrida ${campNombre}`);
+    XLSX.utils.book_append_sheet(wb, ws, `Recorrida ${campNombre.replace('/', '-')}`);
     XLSX.writeFile(wb, `recorrida-${campNombre.replace('/','-')}.xlsx`);
   }
 
