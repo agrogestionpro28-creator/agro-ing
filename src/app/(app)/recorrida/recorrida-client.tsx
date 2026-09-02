@@ -1,9 +1,8 @@
 'use client';
 import { useState } from 'react';
+import * as XLSX from 'xlsx';
 import { createClient } from '@/lib/supabase/client';
 import { cn } from '@/lib/utils';
-
-declare const XLSX: any;
 
 type Productor = { id: string; razon_social: string };
 type Campana = { id: string; nombre: string };
@@ -20,17 +19,6 @@ function fmtFecha(iso: string | null): string {
   if (!iso) return '';
   const [y, m, d] = iso.split('-');
   return `${d}/${m}/${y}`;
-}
-
-function loadXLSX(): Promise<void> {
-  return new Promise((resolve, reject) => {
-    if (typeof (window as any).XLSX !== 'undefined') { resolve(); return; }
-    const s = document.createElement('script');
-    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
-    s.onload = () => resolve();
-    s.onerror = () => reject(new Error('No se pudo cargar XLSX'));
-    document.head.appendChild(s);
-  });
 }
 
 export function RecorridaClient({ productores, campanas }: { productores: Productor[]; campanas: Campana[] }) {
@@ -91,37 +79,7 @@ export function RecorridaClient({ productores, campanas }: { productores: Produc
     setLoading(false);
   }
 
-  function descargarCSV() {
-    const campNombre = campanaActual?.nombre ?? '';
-    let csv = '﻿'; // BOM for Excel UTF-8
-    for (const grupo of preview) {
-      csv += `\n${grupo.productor}\n`;
-      csv += 'Lote,Has,Cultivo,Variedad,F. Siembra,Notas\n';
-      for (const l of grupo.lotes) {
-        const cultivo = [l.cultivo, l.cultivo_2].filter(Boolean).join('/');
-        csv += `"${l.nombre}",${l.hectareas},"${cultivo}","${l.variedad??''}","${fmtFecha(l.fecha_siembra)}","${l.notas??''}"\n`;
-      }
-      const totalHas = grupo.lotes.reduce((s,l)=>s+Number(l.hectareas),0);
-      csv += `TOTAL,${totalHas},${grupo.lotes.length} lotes,,,\n`;
-    }
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `recorrida-${campNombre.replace('/','-')}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
-  }
-
   async function descargarExcel() {
-    try {
-      await loadXLSX();
-    } catch {
-      // Fallback to CSV if XLSX fails
-      descargarCSV();
-      return;
-    }
-    const XLSX = (window as any).XLSX;
     const wb = XLSX.utils.book_new();
     const campNombre = campanaActual?.nombre ?? '';
 
