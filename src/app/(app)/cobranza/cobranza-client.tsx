@@ -32,7 +32,7 @@ function fmtPesos(n: number) {
 export function CobranzaClient({ campanas, productores, userId }: {
   campanas: Campana[]; productores: Productor[]; userId: string;
 }) {
-  const [campanaId, setCampanaId] = useState(campanas[0]?.id ?? '');
+  const [campanaId, setCampanaId] = useState(campanas[campanas.length-1]?.id ?? '');
   const [acuerdos, setAcuerdos] = useState<Acuerdo[]>([]);
   const [pagos, setPagos] = useState<Pago[]>([]);
   const [loading, setLoading] = useState(false);
