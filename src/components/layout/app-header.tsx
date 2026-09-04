@@ -74,88 +74,20 @@ export function AppHeader({
             </div>
           </div>
 
-          {/* Selector de campaña */}
+                    {/* Selector de campaña — dropdown */}
           <div className="flex items-center gap-2">
-            <button
-              onClick={() => navCampana(-1)}
-              disabled={idx <= 0}
-              aria-label="Campaña anterior"
-              className="w-7 h-7 flex items-center justify-center text-mid hover:text-ochre disabled:opacity-20 transition-colors text-xl"
+            <select
+              value={campanaActivaId}
+              onChange={e => onCampanaChange(e.target.value)}
+              className="bg-base-3 border border-base-5 rounded-full px-4 py-2 text-hi font-bold text-sm focus:outline-none focus:border-ochre cursor-pointer"
+              style={{minWidth: 150}}
             >
-              ‹
-            </button>
-            <div className="bg-base-3 border border-base-5 rounded-full px-4 py-2 text-center min-w-[140px]">
-              <div className="text-hi font-bold text-sm leading-none">
-                Campaña {campanaActual?.nombre ?? '—'}
-              </div>
-              <div className="text-lo text-[10px] mt-1">
-                {campanaActual
-                  ? `${fmtDate(campanaActual.fecha_inicio)} → ${fmtDate(campanaActual.fecha_fin)}`
-                  : ''}
-              </div>
-            </div>
-            <button
-              onClick={() => navCampana(1)}
-              disabled={idx >= campanas.length - 1}
-              aria-label="Campaña siguiente"
-              className="w-7 h-7 flex items-center justify-center text-mid hover:text-ochre disabled:opacity-20 transition-colors text-xl"
-            >
-              ›
-            </button>
+              {campanas.map(c => (
+                <option key={c.id} value={c.id} style={{background:'#111'}}>
+                  Campaña {c.nombre}
+                </option>
+              ))}
+            </select>
           </div>
 
-          {/* Menú perfil */}
-          <div className="relative">
-            <button
-              onClick={() => setShowMenu((v) => !v)}
-              className="text-lo hover:text-mid text-xs border border-base-5 rounded px-3 py-1.5 transition-colors"
-            >
-              ⚙ Perfil
-            </button>
-            {showMenu && (
-              <div className="absolute right-0 mt-1 w-36 card py-1 shadow-lg z-50">
-                <button
-                  onClick={() => { setShowMenu(false); router.push('/perfil'); }}
-                  className="w-full text-left px-4 py-2 text-sm text-mid hover:text-hi hover:bg-base-4 transition-colors"
-                >
-                  Editar perfil
-                </button>
-                <form action={logout}>
-                  <button className="w-full text-left px-4 py-2 text-sm text-danger hover:bg-base-4 transition-colors">
-                    Cerrar sesión
-                  </button>
-                </form>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Module tabs */}
-        <nav className="flex gap-1 flex-wrap -mb-px">
-          {TABS.map((tab) => {
-            const active = pathname === tab.href || (tab.href !== '/dashboard' && pathname.startsWith(tab.href));
-            return (
-              <button
-                key={tab.href}
-                onClick={() => router.push(tab.href)}
-                className={cn(
-                  'px-4 py-2 text-xs font-semibold rounded-t-lg border border-b-0 transition-all',
-                  active
-                    ? 'bg-ochre text-base-DEFAULT border-ochre'
-                    : 'bg-transparent text-mid border-transparent hover:border-base-5 hover:text-hi'
-                )}
-              >
-                {tab.label}
-              </button>
-            );
-          })}
-        </nav>
-      </div>
-    </header>
-  );
-}
-
-function fmtDate(iso: string) {
-  const [y, m, d] = iso.split('-');
-  return `${d}/${m}/${y.slice(2)}`;
-}
+          
