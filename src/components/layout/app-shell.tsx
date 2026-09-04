@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, createContext, useContext } from 'react';
+import { useRouter } from 'next/navigation';
 import { AppHeader } from './app-header';
 import { getCampanaActual } from '@/lib/utils';
 
@@ -20,11 +21,17 @@ export function AppShell({
   campanas: Campana[];
   children: React.ReactNode;
 }) {
+  const router = useRouter();
   const { nombre: nombreActual } = getCampanaActual();
   const defaultCampana = campanas.find((c) => c.nombre === nombreActual) ?? campanas[0];
   const [campanaId, setCampanaId] = useState(defaultCampana?.id ?? '');
 
   const campana = campanas.find((c) => c.id === campanaId);
+
+  function handleCampanaChange(id: string) {
+    setCampanaId(id);
+    router.refresh();
+  }
 
   return (
     <CampanaContext.Provider value={{ campanaId, campana }}>
@@ -33,7 +40,7 @@ export function AppShell({
           ingeniero={ingeniero}
           campanas={campanas}
           campanaActivaId={campanaId}
-          onCampanaChange={setCampanaId}
+          onCampanaChange={handleCampanaChange}
         />
         <main className="flex-1 p-6 max-w-7xl mx-auto w-full">
           {children}
