@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { logout } from '@/app/(auth)/logout/actions';
+import { logout } from '@/app/(auth)/login/actions';
 
 type Campana = { id: string; nombre: string; fecha_inicio: string; fecha_fin: string };
 type Ingeniero = { nombre: string; apellido: string | null; matricula: string | null; logo_url: string | null };
