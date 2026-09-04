@@ -8,7 +8,7 @@ export default async function CobranzaPage() {
 
   const [{ data: campanas }, { data: productores }] = await Promise.all([
     (sb as any).from('campanas').select('id,nombre,fecha_inicio,fecha_fin')
-      .eq('ingeniero_id', user.id).order('fecha_inicio', { ascending: false }),
+      .eq('ingeniero_id', user.id).order('fecha_inicio', { ascending: false }).limit(10),
     (sb as any).from('productores').select('id,razon_social,hectareas_totales')
       .eq('ingeniero_id', user.id).order('razon_social'),
   ]);
