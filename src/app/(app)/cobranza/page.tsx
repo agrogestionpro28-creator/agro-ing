@@ -6,12 +6,23 @@ export default async function CobranzaPage() {
   const { data: { user } } = await sb.auth.getUser();
   if (!user) return null;
 
-  const [{ data: campanas }, { data: productores }] = await Promise.all([
-    (sb as any).from('campanas').select('id,nombre,fecha_inicio,fecha_fin')
-      .eq('ingeniero_id', user.id).order('fecha_inicio', { ascending: false }).limit(10),
-    (sb as any).from('productores').select('id,razon_social,hectareas_totales')
-      .eq('ingeniero_id', user.id).order('razon_social'),
-  ]);
+  const { data: campanas } = await (sb as any)
+    .from('campanas')
+    .select('id,nombre,fecha_inicio,fecha_fin')
+    .eq('ingeniero_id', user.id)
+    .order('fecha_inicio', { ascending: false });
 
-  return <CobranzaClient campanas={campanas ?? []} productores={productores ?? []} userId={user.id} />;
+  const { data: productores } = await (sb as any)
+    .from('productores')
+    .select('id,razon_social,hectareas_totales')
+    .eq('ingeniero_id', user.id)
+    .order('razon_social');
+
+  return (
+    <CobranzaClient
+      campanas={campanas ?? []}
+      productores={productores ?? []}
+      userId={user.id}
+    />
+  );
 }
