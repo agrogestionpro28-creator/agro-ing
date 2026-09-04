@@ -1,8 +1,17 @@
-export default function Page() {
-  return (
-    <div className="max-w-xl mx-auto mt-16 text-center">
-      <div className="text-5xl mb-4 opacity-20">⬡</div>
-      <p className="text-mid text-sm">Módulo en construcción. Próximamente.</p>
-    </div>
-  );
+import { createClient } from '@/lib/supabase/server';
+import { CobranzaClient } from './cobranza-client';
+
+export default async function CobranzaPage() {
+  const sb = await createClient();
+  const { data: { user } } = await sb.auth.getUser();
+  if (!user) return null;
+
+  const [{ data: campanas }, { data: productores }] = await Promise.all([
+    (sb as any).from('campanas').select('id,nombre,fecha_inicio,fecha_fin')
+      .eq('ingeniero_id', user.id).order('fecha_inicio', { ascending: false }),
+    (sb as any).from('productores').select('id,razon_social,hectareas_totales')
+      .eq('ingeniero_id', user.id).order('razon_social'),
+  ]);
+
+  return <CobranzaClient campanas={campanas ?? []} productores={productores ?? []} userId={user.id} />;
 }
