@@ -6,5 +6,5 @@ export default async function PerfilPage() {
   const { data: { user } } = await sb.auth.getUser();
   if (!user) return null;
   const { data: ing } = await sb.from('ingenieros').select('*').eq('id', user.id).single();
-  return <PerfilForm ingeniero={ing} />;
+  return <PerfilForm ingeniero={ing} userId={user.id} />;
 }
