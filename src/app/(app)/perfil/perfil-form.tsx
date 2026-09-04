@@ -82,7 +82,6 @@ export function PerfilForm({ ingeniero, userId }: { ingeniero: Ing; userId: stri
           {pending ? 'Guardando…' : 'Guardar perfil'}
         </button>
       </form>
-    </div>
 
       {/* Campañas */}
       <div className="card p-6 mt-6">
@@ -119,5 +118,6 @@ export function PerfilForm({ ingeniero, userId }: { ingeniero: Ing; userId: stri
           ))}
         </div>
       </div>
+    </div>
   );
 }
