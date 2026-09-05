@@ -1,9 +1,8 @@
 'use client';
 
-import { useState, createContext, useContext } from 'react';
-import { useRouter } from 'next/navigation';
+import { createContext, useContext } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { AppHeader } from './app-header';
-import { getCampanaActual } from '@/lib/utils';
 
 type Campana = { id: string; nombre: string; fecha_inicio: string; fecha_fin: string };
 type Ingeniero = { nombre: string; apellido: string | null; matricula: string | null; logo_url: string | null };
@@ -22,16 +21,17 @@ export function AppShell({
   children: React.ReactNode;
 }) {
   const router = useRouter();
-  console.log('SHELL campanas:', campanas?.length, campanas?.map((c:any)=>c.nombre));
-  const { nombre: nombreActual } = getCampanaActual();
-  const defaultCampana = campanas.find((c) => c.nombre === nombreActual) ?? campanas[0];
-  const [campanaId, setCampanaId] = useState(defaultCampana?.id ?? '');
+  const searchParams = useSearchParams();
 
-  const campana = campanas.find((c) => c.id === campanaId);
+  // Get campana from URL or default to first
+  const campanaIdFromUrl = searchParams.get('campana');
+  const campana = campanas.find(c => c.id === campanaIdFromUrl) ?? campanas[0];
+  const campanaId = campana?.id ?? '';
 
   function handleCampanaChange(id: string) {
-    setCampanaId(id);
-    router.refresh();
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('campana', id);
+    router.push(`?${params.toString()}`);
   }
 
   return (
