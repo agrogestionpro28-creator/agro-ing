@@ -29,8 +29,8 @@ export function PerfilForm({ ingeniero, userId }: { ingeniero: Ing; userId: stri
     const { error } = await (createClient() as any).from('campanas').insert({
       ingeniero_id: userId,
       nombre: `\${anio}/\${anio+1}`,
-      fecha_inicio: `\${anio}-05-20`,
-      fecha_fin: `\${anio+1}-05-19`,
+      fecha_inicio: `${anio}-05-20`,
+      fecha_fin: `${anio+1}-05-19`,
     });
     setSavingCampana(false);
     if (error) { alert(error.message); return; }
