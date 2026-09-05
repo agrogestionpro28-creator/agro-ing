@@ -1,9 +1,9 @@
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { AppShell } from '@/components/layout/app-shell';
+import { Suspense } from 'react';
 
 export const dynamic = 'force-dynamic';
-export const revalidate = 0;
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const sb = await createClient();
@@ -22,11 +22,13 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     .order('fecha_inicio', { ascending: false });
 
   return (
-    <AppShell
-      ingeniero={ingeniero}
-      campanas={campanas ?? []}
-    >
-      {children}
-    </AppShell>
+    <Suspense>
+      <AppShell
+        ingeniero={ingeniero}
+        campanas={campanas ?? []}
+      >
+        {children}
+      </AppShell>
+    </Suspense>
   );
 }
