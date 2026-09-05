@@ -22,6 +22,7 @@ export function AppShell({
   children: React.ReactNode;
 }) {
   const router = useRouter();
+  console.log('SHELL campanas:', campanas?.length, campanas?.map((c:any)=>c.nombre));
   const { nombre: nombreActual } = getCampanaActual();
   const defaultCampana = campanas.find((c) => c.nombre === nombreActual) ?? campanas[0];
   const [campanaId, setCampanaId] = useState(defaultCampana?.id ?? '');
