@@ -1,10 +1,15 @@
 import { createClient } from '@/lib/supabase/server';
 import { DashboardClient } from './dashboard-client';
 
-export default async function DashboardPage() {
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ campana?: string }>;
+}) {
   const sb = await createClient();
   const { data: { user } } = await sb.auth.getUser();
   if (!user) return null;
+  const { campana: campanaId } = await searchParams;
 
   // Traemos todo lo que necesitamos en paralelo
   const [{ data: productores }, { data: campanas }, { data: hasData }, { data: cobranza }] =
