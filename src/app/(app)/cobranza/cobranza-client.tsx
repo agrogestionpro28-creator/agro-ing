@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { cn, fmtFecha } from '@/lib/utils';
 
@@ -29,10 +30,11 @@ function fmtPesos(n: number) {
   return `$ ${n.toLocaleString('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
 }
 
-export function CobranzaClient({ campanas, productores, userId }: {
+export function CobranzaClient({ campanas, campanaIdInicial, productores, userId }: {
   campanas: Campana[]; productores: Productor[]; userId: string;
 }) {
-  const [campanaId, setCampanaId] = useState(campanas[campanas.length-1]?.id ?? '');
+  const router = useRouter();
+  const [campanaId, setCampanaId] = useState(campanaIdInicial ?? campanas[0]?.id ?? '');
   const [acuerdos, setAcuerdos] = useState<Acuerdo[]>([]);
   const [pagos, setPagos] = useState<Pago[]>([]);
   const [loading, setLoading] = useState(false);
@@ -148,6 +150,11 @@ export function CobranzaClient({ campanas, productores, userId }: {
 
   const campanaActual = campanas.find(c => c.id === campanaId);
 
+  function cambiarCampana(id: string) {
+    setCampanaId(id);
+    router.push(`/cobranza?campana=${id}`);
+  }
+
   // Productores sin acuerdo en esta campaña
   const productoresSinAcuerdo = productores.filter(p =>
     !acuerdos.find(a => a.productor_id === p.id)
@@ -169,7 +176,7 @@ export function CobranzaClient({ campanas, productores, userId }: {
       {/* Selector campaña */}
       <div className="flex gap-2 mb-6 flex-wrap">
         {campanas.map(c => (
-          <button key={c.id} onClick={() => setCampanaId(c.id)}
+          <button key={c.id} onClick={() => cambiarCampana(c.id)}
             className={cn('px-4 py-2 rounded-lg text-sm font-semibold border transition-all',
               campanaId === c.id ? 'bg-ochre text-[#0a0a0a] border-ochre' : 'bg-base-3 border-base-5 text-mid hover:border-ochre')}
           >{c.nombre}</button>
