@@ -60,7 +60,19 @@ export function CobranzaClient({ campanas, campanaIdInicial, productores, userId
   // Expandido
   const [expandido, setExpandido] = useState<string | null>(null);
 
+  useEffect(() => {
+    fetchProductoresCliente();
+  }, []);
+
   useEffect(() => { if (campanaId) fetchData(); }, [campanaId]);
+
+  async function fetchProductoresCliente() {
+    const { data } = await (createClient() as any)
+      .from('productores')
+      .select('id,razon_social,hectareas_totales')
+      .order('razon_social');
+    if (data && data.length > 0) setProductoresLocales(data);
+  }
 
   async function fetchData() {
     setLoading(true);
@@ -80,7 +92,7 @@ export function CobranzaClient({ campanas, campanaIdInicial, productores, userId
     const sb = createClient() as any;
     const has = acuerdoForm.hectareas
       ? parseFloat(acuerdoForm.hectareas)
-      : productores.find(p => p.id === acuerdoForm.productor_id)?.hectareas_totales ?? null;
+      : productoresEfectivos.find(p => p.id === acuerdoForm.productor_id)?.hectareas_totales ?? null;
 
     const valor = parseFloat(acuerdoForm.valor);
     // Calcular total_kg
@@ -148,7 +160,9 @@ export function CobranzaClient({ campanas, campanaIdInicial, productores, userId
   }, 0);
   const totalPendiente = totalPactado - totalCobrado;
 
+  const [productoresLocales, setProductoresLocales] = useState<Productor[]>(productores);
   const campanaActual = campanas.find(c => c.id === campanaId);
+  const productoresEfectivos = productoresLocales.length > 0 ? productoresLocales : productores;
 
   function cambiarCampana(id: string) {
     setCampanaId(id);
@@ -156,7 +170,7 @@ export function CobranzaClient({ campanas, campanaIdInicial, productores, userId
   }
 
   // Productores sin acuerdo en esta campaña
-  const productoresSinAcuerdo = productores.filter(p =>
+  const productoresSinAcuerdo = productoresEfectivos.filter(p =>
     !acuerdos.find(a => a.productor_id === p.id)
   );
 
@@ -210,7 +224,7 @@ export function CobranzaClient({ campanas, campanaIdInicial, productores, userId
       ) : (
         <div className="space-y-3">
           {acuerdos.map(a => {
-            const prod = productores.find(p => p.id === a.productor_id);
+            const prod = productoresEfectivos.find(p => p.id === a.productor_id);
             const pgAcuerdo = pagos.filter(p => p.acuerdo_id === a.id);
             const cobrado = pgAcuerdo.reduce((s, p) => s + Number(p.monto_pesos), 0);
             const pendiente = (a.total_pesos ?? 0) - cobrado;
@@ -350,7 +364,7 @@ export function CobranzaClient({ campanas, campanaIdInicial, productores, userId
               <label className="block text-xs font-semibold text-mid mb-1 uppercase tracking-wider">Productor</label>
               <select value={acuerdoForm.productor_id} onChange={e => setAcuerdoForm(f => ({...f, productor_id: e.target.value}))} className="field">
                 <option value="">— Seleccioná —</option>
-                {productores.map(p => <option key={p.id} value={p.id}>{p.razon_social}</option>)}
+                {productoresEfectivos.map(p => <option key={p.id} value={p.id}>{p.razon_social}</option>)}
               </select>
             </div>
 
@@ -392,7 +406,7 @@ export function CobranzaClient({ campanas, campanaIdInicial, productores, userId
                 {(() => {
                   const has = acuerdoForm.hectareas
                     ? parseFloat(acuerdoForm.hectareas)
-                    : productores.find(p => p.id === acuerdoForm.productor_id)?.hectareas_totales ?? 0;
+                    : productoresEfectivos.find(p => p.id === acuerdoForm.productor_id)?.hectareas_totales ?? 0;
                   const val = parseFloat(acuerdoForm.valor);
                   const kg = acuerdoForm.modalidad === 'kg_ha_mes' ? val * has * 12 : val * has;
                   return <><span className="text-mid">Total estimado: </span><span className="text-ochre font-bold">{kg.toLocaleString('es-AR')} kg</span> ({has} ha)</>;
@@ -421,7 +435,7 @@ export function CobranzaClient({ campanas, campanaIdInicial, productores, userId
           <div className="w-full max-w-sm card p-6 space-y-4" style={{borderColor:'rgba(46,170,110,0.4)'}}>
             <h2 className="font-bold text-hi">Pesificar honorario</h2>
             <p className="text-mid text-sm">
-              {productores.find(p => p.id === pesificando.productor_id)?.razon_social}
+              {productoresEfectivos.find(p => p.id === pesificando.productor_id)?.razon_social}
               <br/><span className="text-ochre font-bold">{pesificando.total_kg?.toLocaleString('es-AR')} kg</span>
             </p>
             <div>
@@ -452,7 +466,7 @@ export function CobranzaClient({ campanas, campanaIdInicial, productores, userId
           <div className="w-full max-w-sm card p-6 space-y-4" style={{borderColor:'rgba(46,170,110,0.4)'}}>
             <h2 className="font-bold text-hi">Registrar pago</h2>
             <p className="text-mid text-sm">
-              {productores.find(p => p.id === pagandoAcuerdo.productor_id)?.razon_social}
+              {productoresEfectivos.find(p => p.id === pagandoAcuerdo.productor_id)?.razon_social}
             </p>
             {(() => {
               const cobrado = pagos.filter(p => p.acuerdo_id === pagandoAcuerdo.id).reduce((s,p)=>s+Number(p.monto_pesos),0);
