@@ -20,7 +20,7 @@ export default async function CobranzaPage({
     .order('fecha_inicio', { ascending: false });
 
   const { data: productores, error: prodError } = await (sb as any).from('productores')
-    .select('id,razon_social,hectareas_totales')
+    .select('id,razon_social')
     .eq('ingeniero_id', user.id)
     .order('razon_social');
 
