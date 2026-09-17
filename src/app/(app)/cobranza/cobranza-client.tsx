@@ -31,7 +31,7 @@ function fmtPesos(n: number) {
 }
 
 export function CobranzaClient({ campanas, campanaIdInicial, productores, userId }: {
-  campanas: Campana[]; productores: Productor[]; userId: string;
+  campanas: Campana[]; campanaIdInicial: string; productores: Productor[]; userId: string;
 }) {
   const router = useRouter();
   const [campanaId, setCampanaId] = useState(campanaIdInicial ?? campanas[0]?.id ?? '');
