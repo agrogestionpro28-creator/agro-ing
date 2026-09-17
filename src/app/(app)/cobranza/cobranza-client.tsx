@@ -67,11 +67,14 @@ export function CobranzaClient({ campanas, campanaIdInicial, productores, userId
   useEffect(() => { if (campanaId) fetchData(); }, [campanaId]);
 
   async function fetchProductoresCliente() {
-    const { data } = await (createClient() as any)
+    const sb = createClient() as any;
+    const { data, error } = await sb
       .from('productores')
       .select('id,razon_social,hectareas_totales')
+      .eq('ingeniero_id', userId)
       .order('razon_social');
-    if (data && data.length > 0) setProductoresLocales(data);
+    console.log('PROD CLIENT:', data?.length, error?.message);
+    if (data) setProductoresLocales(data);
   }
 
   async function fetchData() {
