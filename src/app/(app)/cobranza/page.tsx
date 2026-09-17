@@ -14,16 +14,18 @@ export default async function CobranzaPage({
 
   const { campana: campanaParam } = await searchParams;
 
-  const [{ data: campanas }, { data: productores }] = await Promise.all([
-    (sb as any).from('campanas')
-      .select('id,nombre')
-      .eq('ingeniero_id', user.id)
-      .order('fecha_inicio', { ascending: false }),
-    (sb as any).from('productores')
-      .select('id,razon_social,hectareas_totales')
-      .eq('ingeniero_id', user.id)
-      .order('razon_social'),
-  ]);
+  const { data: campanas } = await (sb as any).from('campanas')
+    .select('id,nombre')
+    .eq('ingeniero_id', user.id)
+    .order('fecha_inicio', { ascending: false });
+
+  const { data: productores, error: prodError } = await (sb as any).from('productores')
+    .select('id,razon_social,hectareas_totales')
+    .eq('ingeniero_id', user.id)
+    .order('razon_social');
+
+  console.log('USER_ID:', user.id);
+  console.log('PRODUCTORES:', productores?.length, prodError?.message);
 
   const lista = campanas ?? [];
   const campanaId = campanaParam ?? lista[0]?.id ?? '';
