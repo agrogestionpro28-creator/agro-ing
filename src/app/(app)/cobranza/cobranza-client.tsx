@@ -70,7 +70,7 @@ export function CobranzaClient({ campanas, campanaIdInicial, productores, userId
     const sb = createClient() as any;
     const { data, error } = await sb
       .from('productores')
-      .select('id,razon_social,hectareas_totales')
+      .select('id,razon_social')
       .eq('ingeniero_id', userId)
       .order('razon_social');
     console.log('PROD CLIENT:', data?.length, error?.message);
