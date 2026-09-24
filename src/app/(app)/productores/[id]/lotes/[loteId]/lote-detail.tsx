@@ -367,7 +367,7 @@ export function LoteDetail({ lote:initial, productorId, productorNombre, ingenie
     ctx.fillStyle = '#f59e0b'; ctx.font = 'bold 10px Inter,sans-serif';
     ctx.letterSpacing = '4px'; ctx.fillText('ORDEN DE APLICACIÓN',28,26); ctx.letterSpacing = '0';
     ctx.fillStyle = '#ffffff'; ctx.font = 'bold 36px Inter,sans-serif';
-    ctx.fillText(form.tipo.toUpperCase(),28,72);
+    ctx.fillText((tiposSeleccionados2.length > 0 ? tiposSeleccionados2.join(' + ') : form.tipo).toUpperCase(),28,72);
     ctx.fillStyle = '#777'; ctx.font = 'bold 13px Inter,sans-serif';
     ctx.fillText(productorNombre.toUpperCase(),28,93);
 
