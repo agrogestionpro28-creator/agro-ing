@@ -313,7 +313,7 @@ export function ProductorDetail({ productor, campanas, ingeniero }:{ productor:P
 
     // Tipo
     ctx.fillStyle = '#ffffff'; ctx.font = 'bold 36px Inter,sans-serif';
-    ctx.fillText(aplForm.tipo.toUpperCase(), 28, 72);
+    ctx.fillText((tiposSeleccionados.length > 0 ? tiposSeleccionados.join(' + ') : 'Herbicida').toUpperCase(), 28, 72);
 
     // Nombre productor
     ctx.fillStyle = '#777'; ctx.font = 'bold 13px Inter,sans-serif';
