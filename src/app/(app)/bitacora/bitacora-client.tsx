@@ -58,7 +58,7 @@ export function BitacoraClient({ productores, alertas: alertasInit, malezas: mal
 }) {
   const [alertas, setAlertas] = useState(alertasInit);
   const [malezas, setMalezas] = useState(malezasInit);
-  const [tab, setTab] = useState<'alertas'|'malezas'>('alertas');
+  const [tab, setTab] = useState<'alertas'|'malezas'|'observaciones'>('alertas');
   const [lotes, setLotes] = useState<{id:string;nombre:string;productor_id:string}[]>([]);
   const [filtroProductor, setFiltroProductor] = useState('');
 
@@ -210,7 +210,7 @@ export function BitacoraClient({ productores, alertas: alertasInit, malezas: mal
         <div className="flex gap-2">
           {tab === 'alertas' && <button onClick={() => setShowAlerta(true)} className="btn-primary text-xs">+ Nueva alerta</button>}
           {tab === 'malezas' && <button onClick={() => setShowMaleza(true)} className="btn-afa text-xs">+ Registrar maleza</button>}
-          {tab === ('observaciones' as any) && <button onClick={() => setShowObs(true)} className="btn-ghost text-xs border-sky-400 text-sky-400">+ Anotar estado</button>}
+          {tab === 'observaciones' && <button onClick={() => setShowObs(true)} className="btn-ghost text-xs border-sky-400 text-sky-400">+ Anotar estado</button>}
         </div>
       </div>
 
@@ -226,7 +226,7 @@ export function BitacoraClient({ productores, alertas: alertasInit, malezas: mal
             tab==='malezas' ? 'border-afa text-afa' : 'border-transparent text-mid hover:text-hi')}>
           🌿 Malezas {malezas.length > 0 && <span className="ml-1 bg-afa text-[#0a0a0a] text-[10px] font-black px-1.5 py-0.5 rounded-full">{malezas.length}</span>}
         </button>
-        <button onClick={() => setTab('observaciones' as any)}
+        <button onClick={() => setTab('observaciones')}
           className={cn('px-5 py-2.5 text-sm font-semibold border-b-2 transition-all -mb-px',
             tab==='observaciones' ? 'border-sky-400 text-sky-400' : 'border-transparent text-mid hover:text-hi')}>
           📋 Estado lotes
@@ -322,7 +322,7 @@ export function BitacoraClient({ productores, alertas: alertasInit, malezas: mal
       )}
 
       {/* ── OBSERVACIONES ── */}
-      {tab === ('observaciones' as any) && (
+      {tab === 'observaciones' && (
         <div>
           {/* Filtros */}
           <div className="flex gap-2 mb-4 flex-wrap items-center">
