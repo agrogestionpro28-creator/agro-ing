@@ -8,7 +8,7 @@ export default async function BitacoraPage() {
   const { data: { user } } = await sb.auth.getUser();
   if (!user) return null;
 
-  const [{ data: productores }, { data: alertas }, { data: malezas }] = await Promise.all([
+  const [{ data: productores }, { data: alertas }, { data: malezas }, { data: observaciones }] = await Promise.all([
     (sb as any).from('productores')
       .select('id, razon_social')
       .eq('ingeniero_id', user.id)
@@ -22,6 +22,10 @@ export default async function BitacoraPage() {
       .select('*, lotes(nombre, productor_id, productores(razon_social))')
       .eq('estado', 'activa')
       .order('created_at', { ascending: false }),
+    (sb as any).from('observaciones_lote')
+      .select('*, lotes(nombre, cultivo, productor_id, productores(razon_social))')
+      .order('fecha', { ascending: false })
+      .limit(200),
   ]);
 
   return (
@@ -29,6 +33,7 @@ export default async function BitacoraPage() {
       productores={productores ?? []}
       alertas={alertas ?? []}
       malezas={malezas ?? []}
+      observaciones={observaciones ?? []}
       userId={user.id}
     />
   );
