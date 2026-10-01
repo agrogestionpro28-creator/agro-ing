@@ -53,8 +53,8 @@ function diasRestantes(fecha: string | null): number | null {
   return Math.ceil((limite.getTime() - hoy.getTime()) / (1000*60*60*24));
 }
 
-export function BitacoraClient({ productores, alertas: alertasInit, malezas: malezasInit, userId }: {
-  productores: Productor[]; alertas: Alerta[]; malezas: Maleza[]; userId: string;
+export function BitacoraClient({ productores, alertas: alertasInit, malezas: malezasInit, observaciones: obsInit, userId }: {
+  productores: Productor[]; alertas: Alerta[]; malezas: Maleza[]; observaciones: any[]; userId: string;
 }) {
   const [alertas, setAlertas] = useState(alertasInit);
   const [malezas, setMalezas] = useState(malezasInit);
@@ -82,7 +82,7 @@ export function BitacoraClient({ productores, alertas: alertasInit, malezas: mal
   const [obsLotes, setObsLotes] = useState<string[]>([]);
   const [obsForm, setObsForm] = useState({ fecha: new Date().toISOString().slice(0,10), estado:'', nota:'' });
   const [savingObs, setSavingObs] = useState(false);
-  const [observaciones, setObservaciones] = useState<any[]>([]);
+  const [observaciones, setObservaciones] = useState<any[]>(obsInit ?? []);
   const [obsFiltroProductor, setObsFiltroProductor] = useState('');
   const [obsFiltroEstado, setObsFiltroEstado] = useState('');
   const [obsFiltroSinCultivo, setObsFiltroSinCultivo] = useState('');
