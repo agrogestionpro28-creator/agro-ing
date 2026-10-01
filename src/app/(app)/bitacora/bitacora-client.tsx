@@ -21,6 +21,19 @@ const NIVELES = ['bajo','medio','alto','critico'];
 const TIPOS_ALERTA = ['fungicida','cierre_surco','aplicacion','cosecha','otro'];
 const MALEZAS_COMUNES = ['Maicillo','Rye grass','Sorgo de alepo','Conyza','Yuyo colorado','Pasto cuaresma','Gramón','Otra'];
 
+const ESTADOS_LOTE = [
+  { value: 'barbecho_largo',    label: 'Barbecho largo',    icon: '🟤' },
+  { value: 'barbecho_intermedio', label: 'Barbecho interm.', icon: '🟡' },
+  { value: 'naciendo',          label: 'Naciendo',          icon: '🌱' },
+  { value: 'implantado',        label: 'Implantado',        icon: '✅' },
+  { value: 'macollaje',         label: 'Macollaje',         icon: '🌿' },
+  { value: 'encañado',          label: 'Encañado',          icon: '🎋' },
+  { value: 'floracion',         label: 'Floración',         icon: '🌸' },
+  { value: 'grano_lechoso',     label: 'Grano lechoso',     icon: '🌾' },
+  { value: 'maduro',            label: 'Maduro',            icon: '🟡' },
+  { value: 'cosechado',         label: 'Cosechado',         icon: '🚜' },
+];
+
 const NIVEL_COLOR: Record<string,string> = {
   bajo: 'text-green-400 bg-green-950 border-green-700',
   medio: 'text-yellow-400 bg-yellow-950 border-yellow-700',
@@ -65,6 +78,14 @@ export function BitacoraClient({ productores, alertas: alertasInit, malezas: mal
     tratamientos:'', observaciones:'',
   });
   const [savingMaleza, setSavingMaleza] = useState(false);
+  const [showObs, setShowObs] = useState(false);
+  const [obsLotes, setObsLotes] = useState<string[]>([]);
+  const [obsForm, setObsForm] = useState({ fecha: new Date().toISOString().slice(0,10), estado:'', nota:'' });
+  const [savingObs, setSavingObs] = useState(false);
+  const [observaciones, setObservaciones] = useState<any[]>([]);
+  const [obsFiltroProductor, setObsFiltroProductor] = useState('');
+  const [obsFiltroEstado, setObsFiltroEstado] = useState('');
+  const [obsFiltroSinCultivo, setObsFiltroSinCultivo] = useState('');
 
   useEffect(() => { fetchLotes(); }, []);
 
@@ -76,15 +97,37 @@ export function BitacoraClient({ productores, alertas: alertasInit, malezas: mal
 
   async function fetchData() {
     const sb = createClient() as any;
-    const [{ data: al }, { data: ml }] = await Promise.all([
+    const [{ data: al }, { data: ml }, { data: obs }] = await Promise.all([
       sb.from('alertas').select('*, productores(razon_social), lotes(nombre)')
         .eq('ingeniero_id', userId).eq('completada', false)
         .order('fecha_limite', { ascending: true }),
       sb.from('malezas').select('*, lotes(nombre, productor_id, productores(razon_social))')
         .eq('estado', 'activa').order('created_at', { ascending: false }),
+      sb.from('observaciones_lote')
+        .select('*, lotes(nombre, cultivo, productor_id, productores(razon_social))')
+        .order('fecha', { ascending: false }).limit(100),
     ]);
     setAlertas(al ?? []);
     setMalezas(ml ?? []);
+    setObservaciones(obs ?? []);
+  }
+
+  async function guardarObservaciones() {
+    if (!obsLotes.length || (!obsForm.estado && !obsForm.nota)) return;
+    setSavingObs(true);
+    const inserts = obsLotes.map(lid => ({
+      lote_id: lid,
+      fecha: obsForm.fecha,
+      estado: obsForm.estado || null,
+      nota: obsForm.nota || null,
+    }));
+    const { error } = await (createClient() as any).from('observaciones_lote').insert(inserts);
+    setSavingObs(false);
+    if (error) { alert(error.message); return; }
+    setObsForm({ fecha: new Date().toISOString().slice(0,10), estado:'', nota:'' });
+    setObsLotes([]);
+    setShowObs(false);
+    await fetchData();
   }
 
   async function guardarAlerta() {
@@ -165,10 +208,9 @@ export function BitacoraClient({ productores, alertas: alertasInit, malezas: mal
           <h1 className="text-2xl font-bold text-hi">Bitácora</h1>
         </div>
         <div className="flex gap-2">
-          {tab === 'alertas'
-            ? <button onClick={() => setShowAlerta(true)} className="btn-primary text-xs">+ Nueva alerta</button>
-            : <button onClick={() => setShowMaleza(true)} className="btn-afa text-xs">+ Registrar maleza</button>
-          }
+          {tab === 'alertas' && <button onClick={() => setShowAlerta(true)} className="btn-primary text-xs">+ Nueva alerta</button>}
+          {tab === 'malezas' && <button onClick={() => setShowMaleza(true)} className="btn-afa text-xs">+ Registrar maleza</button>}
+          {tab === ('observaciones' as any) && <button onClick={() => setShowObs(true)} className="btn-ghost text-xs border-sky-400 text-sky-400">+ Anotar estado</button>}
         </div>
       </div>
 
@@ -183,6 +225,11 @@ export function BitacoraClient({ productores, alertas: alertasInit, malezas: mal
           className={cn('px-5 py-2.5 text-sm font-semibold border-b-2 transition-all -mb-px',
             tab==='malezas' ? 'border-afa text-afa' : 'border-transparent text-mid hover:text-hi')}>
           🌿 Malezas {malezas.length > 0 && <span className="ml-1 bg-afa text-[#0a0a0a] text-[10px] font-black px-1.5 py-0.5 rounded-full">{malezas.length}</span>}
+        </button>
+        <button onClick={() => setTab('observaciones' as any)}
+          className={cn('px-5 py-2.5 text-sm font-semibold border-b-2 transition-all -mb-px',
+            tab==='observaciones' ? 'border-sky-400 text-sky-400' : 'border-transparent text-mid hover:text-hi')}>
+          📋 Estado lotes
         </button>
       </div>
 
@@ -271,6 +318,142 @@ export function BitacoraClient({ productores, alertas: alertasInit, malezas: mal
               ))}
             </div>
           )}
+        </div>
+      )}
+
+      {/* ── OBSERVACIONES ── */}
+      {tab === ('observaciones' as any) && (
+        <div>
+          {/* Filtros */}
+          <div className="flex gap-2 mb-4 flex-wrap items-center">
+            <select value={obsFiltroProductor} onChange={e=>{setObsFiltroProductor(e.target.value);}}
+              className="field text-xs py-1.5" style={{maxWidth:200}}>
+              <option value="">Todos los productores</option>
+              {productores.map(p=><option key={p.id} value={p.id}>{p.razon_social}</option>)}
+            </select>
+            <select value={obsFiltroEstado} onChange={e=>setObsFiltroEstado(e.target.value)}
+              className="field text-xs py-1.5" style={{maxWidth:180}}>
+              <option value="">Todos los estados</option>
+              {ESTADOS_LOTE.map(e=><option key={e.value} value={e.value}>{e.icon} {e.label}</option>)}
+            </select>
+            <select value={obsFiltroSinCultivo} onChange={e=>setObsFiltroSinCultivo(e.target.value)}
+              className="field text-xs py-1.5" style={{maxWidth:160}}>
+              <option value="">Todos los cultivos</option>
+              {['Soja','Maíz','Trigo','Girasol','Sorgo','Cebada'].map(c=><option key={c} value={c}>Sin {c}</option>)}
+            </select>
+          </div>
+
+          {observaciones.length === 0 ? (
+            <div className="card p-10 text-center">
+              <p className="text-4xl mb-3">📋</p>
+              <p className="text-mid">Sin observaciones registradas.</p>
+              <p className="text-lo text-sm mt-1">Anotá el estado actual de los lotes de forma masiva.</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {observaciones
+                .filter(o => !obsFiltroProductor || o.lotes?.productor_id === obsFiltroProductor)
+                .filter(o => !obsFiltroEstado || o.estado === obsFiltroEstado)
+                .filter(o => !obsFiltroSinCultivo || o.lotes?.cultivo !== obsFiltroSinCultivo)
+                .map(o => {
+                  const estadoInfo = ESTADOS_LOTE.find(e=>e.value===o.estado);
+                  return (
+                    <div key={o.id} className="card p-3 flex items-start gap-3">
+                      <div className="text-xl shrink-0">{estadoInfo?.icon ?? '📌'}</div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-semibold text-hi text-sm">{o.lotes?.nombre}</span>
+                          {estadoInfo && <span className="text-xs text-sky-400 font-semibold">{estadoInfo.label}</span>}
+                          <span className="text-lo text-xs">{fmtFecha(o.fecha)}</span>
+                        </div>
+                        <p className="text-lo text-xs">{o.lotes?.productores?.razon_social}{o.lotes?.cultivo ? ' · '+o.lotes.cultivo : ''}</p>
+                        {o.nota && <p className="text-mid text-xs mt-0.5 italic">{o.nota}</p>}
+                      </div>
+                    </div>
+                  );
+                })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* MODAL: Anotar estado de lotes */}
+      {showObs && (
+        <div className="fixed inset-0 bg-black/80 z-50 flex items-start justify-center overflow-y-auto py-8 px-4">
+          <div className="w-full max-w-2xl card p-6 space-y-5" style={{borderColor:'rgba(56,189,248,0.4)'}}>
+            <div className="flex items-center justify-between">
+              <h2 className="font-bold text-hi">Anotar estado de lotes</h2>
+              <button onClick={() => { setShowObs(false); setObsLotes([]); }} className="text-lo hover:text-hi text-xl">✕</button>
+            </div>
+
+            {/* Estado */}
+            <div>
+              <label className="block text-xs font-semibold text-mid mb-2 uppercase tracking-wider">Estado</label>
+              <div className="flex flex-wrap gap-2">
+                {ESTADOS_LOTE.map(e => (
+                  <button key={e.value} type="button"
+                    onClick={() => setObsForm(f=>({...f, estado: f.estado===e.value?'':e.value}))}
+                    className={cn('px-3 py-1.5 rounded text-xs font-semibold border transition-all',
+                      obsForm.estado===e.value ? 'bg-sky-400 text-[#0a0a0a] border-sky-400' : 'bg-base-3 border-base-5 text-mid hover:border-sky-400')}>
+                    {e.icon} {e.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Nota */}
+            <div>
+              <label className="block text-xs font-semibold text-mid mb-1 uppercase tracking-wider">Nota</label>
+              <input value={obsForm.nota}
+                onChange={e=>setObsForm(f=>({...f,nota:e.target.value}))}
+                className="field" placeholder="Ej: naciendo bien, con algo de maicillo"/>
+            </div>
+
+            {/* Fecha */}
+            <div>
+              <label className="block text-xs font-semibold text-mid mb-1 uppercase tracking-wider">Fecha</label>
+              <input type="date" value={obsForm.fecha}
+                onChange={e=>setObsForm(f=>({...f,fecha:e.target.value}))}
+                className="field"/>
+            </div>
+
+            {/* Selección de lotes con filtros */}
+            <div>
+              <div className="flex items-center gap-2 mb-3 flex-wrap">
+                <label className="text-xs font-semibold text-mid uppercase tracking-wider">Lotes</label>
+                <select onChange={e=>{
+                  const pid = e.target.value;
+                  const lotesP = lotes.filter(l=>!pid||l.productor_id===pid);
+                  setObsLotes(lotesP.map(l=>l.id));
+                }} className="field text-xs py-1 ml-2" style={{maxWidth:200}}>
+                  <option value="">Filtrar por productor...</option>
+                  {productores.map(p=><option key={p.id} value={p.id}>{p.razon_social}</option>)}
+                </select>
+                <button onClick={()=>setObsLotes(lotes.map(l=>l.id))} className="text-[10px] text-ochre hover:underline">Todos</button>
+                <button onClick={()=>setObsLotes([])} className="text-[10px] text-lo hover:underline">Ninguno</button>
+                {obsLotes.length > 0 && <span className="text-xs text-sky-400 ml-auto">{obsLotes.length} lotes seleccionados</span>}
+              </div>
+              <div className="flex flex-wrap gap-2 max-h-48 overflow-y-auto">
+                {lotes.map(l => {
+                  const sel = obsLotes.includes(l.id);
+                  return (
+                    <button key={l.id} type="button"
+                      onClick={()=>setObsLotes(prev=>sel?prev.filter(x=>x!==l.id):[...prev,l.id])}
+                      className={cn('text-xs px-3 py-1.5 rounded border transition-all',
+                        sel ? 'bg-sky-400/20 border-sky-400 text-sky-400' : 'bg-base-3 border-base-5 text-lo hover:border-sky-400')}>
+                      {l.nombre}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <button onClick={guardarObservaciones}
+              disabled={savingObs || obsLotes.length===0 || (!obsForm.estado && !obsForm.nota)}
+              className="btn-primary w-full" style={{background:'#38bdf8',color:'#0a0a0a'}}>
+              {savingObs ? 'Guardando…' : `Guardar en ${obsLotes.length} lote${obsLotes.length!==1?'s':''}`}
+            </button>
+          </div>
         </div>
       )}
 
