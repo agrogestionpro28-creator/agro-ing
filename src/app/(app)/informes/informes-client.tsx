@@ -597,25 +597,4 @@ export function InformesClient({
       <canvas ref={canvasRef} style={{ display: 'none' }} />
     </div>
   )
-
-  function cultColorFor(c: string) {
-    const s = (c ?? '').toLowerCase()
-    if (s.includes('soja')) return '#22c55e'
-    if (s.includes('maíz') || s.includes('maiz')) return '#f59e0b'
-    if (s.includes('trigo')) return '#d97706'
-    if (s.includes('sorgo')) return '#ef4444'
-    if (s.includes('girasol')) return '#eab308'
-    return '#6b7280'
-  }
-
-  function abrevCult(c: string) {
-    const s = (c ?? '').toLowerCase()
-    if (s.includes('soja 2')) return 'S2°'
-    if (s.includes('soja')) return 'SOJ'
-    if (s.includes('maíz') || s.includes('maiz')) return 'MAI'
-    if (s.includes('trigo')) return 'TRI'
-    if (s.includes('sorgo')) return 'SOR'
-    if (s.includes('girasol')) return 'GIR'
-    return c?.slice(0, 3).toUpperCase() ?? '---'
-  }
 }
