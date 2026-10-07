@@ -14,6 +14,7 @@ const TABS = [
   { href: '/analisis',    label: 'Análisis',    icon: '🔬' },
   { href: '/recetas',     label: 'Recetas',     icon: '📋' },
   { href: '/bitacora',    label: 'Bitácora',    icon: '⬡' },
+  { href: '/informes',    label: 'Informes',    icon: '📝' },
 ] as const;
 
 export function AppHeader({
