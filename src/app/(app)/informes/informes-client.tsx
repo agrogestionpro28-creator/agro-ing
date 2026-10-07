@@ -58,14 +58,15 @@ export function InformesClient({
   const { campanaId: campanaCtxId } = useCampana()
 
   // ── estado global ──────────────────────────────────────────────
-  // usa la campaña activa del header; si no hay contexto, la primera de la lista
-  const [campanaId, setCampanaId] = useState('')
+  // inicializa con la primera campaña; se actualiza cuando el contexto del header hidrata
+  const [campanaId, setCampanaId] = useState(() => campanas[0]?.id ?? '')
   const [productorId, setProductorId] = useState('')
 
-  // sincronizar campaña del contexto al montar
+  // sincronizar cuando el contexto del header tenga la campaña activa
   useEffect(() => {
-    if (campanaCtxId) setCampanaId(campanaCtxId)
-    else if (campanas[0]?.id) setCampanaId(campanas[0].id)
+    if (campanaCtxId && campanaCtxId !== campanaId) {
+      setCampanaId(campanaCtxId)
+    }
   }, [campanaCtxId])
   const [lotes, setLotes] = useState<Lote[]>([])
   const [filas, setFilas] = useState<Record<string, LoteInforme>>({})
@@ -196,7 +197,7 @@ export function InformesClient({
       const cultColor = cultColorFor(f.cultivo)
       ctx.fillStyle = cultColor
       ctx.beginPath()
-      ctx.roundRect(28, y + 14, 42, 20, 4)
+      ;(ctx as any).roundRect?.(28, y + 14, 42, 20, 4) || (() => { ctx.rect(28, y + 14, 42, 20) })()
       ctx.fill()
       ctx.fillStyle = '#000'
       ctx.font = 'bold 10px Inter,sans-serif'
