@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { useCampana } from '@/components/layout/app-shell'
 
 type Productor = { id: string; razon_social: string }
 type Campana = { id: string; nombre: string }
@@ -54,10 +55,18 @@ export function InformesClient({
   userId: string
 }) {
   const sb = createClient()
+  const { campanaId: campanaCtxId } = useCampana()
 
   // ── estado global ──────────────────────────────────────────────
-  const [campanaId, setCampanaId] = useState(campanas[0]?.id ?? '')
+  // usa la campaña activa del header; si no hay contexto, la primera de la lista
+  const [campanaId, setCampanaId] = useState('')
   const [productorId, setProductorId] = useState('')
+
+  // sincronizar campaña del contexto al montar
+  useEffect(() => {
+    if (campanaCtxId) setCampanaId(campanaCtxId)
+    else if (campanas[0]?.id) setCampanaId(campanas[0].id)
+  }, [campanaCtxId])
   const [lotes, setLotes] = useState<Lote[]>([])
   const [filas, setFilas] = useState<Record<string, LoteInforme>>({})
   const [guardando, setGuardando] = useState(false)
