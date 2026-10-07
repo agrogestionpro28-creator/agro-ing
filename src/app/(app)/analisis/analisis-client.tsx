@@ -217,7 +217,7 @@ export function AnalisisClient({ productores, ingeniero, userId }: { productores
                 <thead>
                   <tr className="text-[10px] uppercase tracking-wider text-lo">
                     <th className="text-left px-4 py-2.5 font-semibold">Determinación</th>
-                    {filas.map(f => <th key={f.a.id} className="text-left px-4 py-2.5 font-semibold whitespace-nowrap">{f.lote.nombre}</th>)}
+                    {filas.map(f => <th key={f.a.id} className="text-center px-4 py-3 whitespace-nowrap text-ochre font-black text-sm tracking-wide">{f.lote.nombre}</th>)}
                   </tr>
                 </thead>
                 <tbody>
@@ -338,11 +338,11 @@ function FilaParam({ p, filas, grupoNuevo }: { p: (typeof PARAMS)[number]; filas
           const v = a[p.key] as number | null;
           const it = interpretar(p.key, v);
           return (
-            <td key={a.id} className="px-4 py-2 whitespace-nowrap">
+            <td key={a.id} className="px-4 py-2 whitespace-nowrap text-center">
               <span className="inline-flex items-center gap-2">
                 <span className={cn('w-2 h-2 rounded-full', it ? ESTADO_DOT[it.estado] : 'bg-transparent')} />
                 <span className="font-mono text-hi w-12">{fmtValor(v)}</span>
-                <span className="text-xs text-mid">{it?.nivel ?? (v == null ? '' : 'sin rango')}</span>
+                <span className="text-xs text-mid w-20 text-left">{it?.nivel ?? (v == null ? '' : 'sin rango')}</span>
               </span>
             </td>
           );
