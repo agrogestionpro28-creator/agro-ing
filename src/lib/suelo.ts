@@ -100,7 +100,11 @@ export const PRODUCTOS: Record<string, Grado> = {
   'Sulfato de amonio': { n: 21, p: 0, s: 24, zn: 0 },
   'Yeso agrícola': { n: 0, p: 0, s: 18, zn: 0 },
   'Sulfato de zinc': { n: 0, p: 0, s: 0, zn: 35 },
+  'SolMIX 80-20': { n: 28, p: 0, s: 5.2, zn: 0 }, // 80% UAN + 20% tiosulfato de amonio
 };
+
+/** Densidad de fertilizantes líquidos (kg/L). */
+export const DENSIDAD: Record<string, number> = { 'SolMIX 80-20': 1.32 };
 
 /** Lee grados tipo "12-40-0-5-1Zn" (N-P2O5-K2O-S-Zn) o productos conocidos. */
 export function gradoDe(producto: string): Grado {
@@ -112,6 +116,7 @@ export function gradoDe(producto: string): Grado {
   if (t.includes('map')) return PRODUCTOS['MAP 11-52-0'];
   if (t.includes('sps') || t.includes('superfosfato')) return PRODUCTOS['SPS 0-21-0-12S'];
   if (t.includes('yeso')) return PRODUCTOS['Yeso agrícola'];
+  if (t.includes('solmix')) return PRODUCTOS['SolMIX 80-20'];
   const nums = producto.match(/\d+(?:[.,]\d+)?/g)?.map(x => parseFloat(x.replace(',', '.'))) ?? [];
   if (nums.length >= 3) {
     return { n: nums[0], p: nums[1] * 0.436, s: nums[3] ?? 0, zn: nums[4] ?? 0 };
@@ -137,6 +142,8 @@ export type Recomendacion = {
   aplicado: { n: number; p: number; s: number; zn: number };
   productos: { producto: string; kg_ha: number; momento: string }[];
   notas: string[];
+  /** Opción líquida en una sola pasada (maíz post-siembra). */
+  alternativa?: { producto: string; kg_ha: number; litros_ha: number; n: number; s: number; nota: string };
 };
 
 const r5 = (x: number) => Math.round(x / 5) * 5;
@@ -185,7 +192,20 @@ export function recomendar(a: AnalisisSuelo, cultivoLote: string | null, sup: Su
       const pFalta = pNec - ap.p;
       if (pFalta > 3) notas.push(`Faltaron ~${Math.round(pFalta)} kg P/ha respecto de lo recomendado. No se corrige en este cultivo: reponer en el próximo.`);
       notas.push('Antes de sumar urea: test de nitratos 0–30 cm en V5–V6 o franja con SPAD.');
-      return { cultivo, modo: 'complemento', necesidad: { n: nNec, p: pNec, s: sNec, zn: znNec }, aplicado: ap, productos, notas };
+      let alternativa: Recomendacion['alternativa'];
+      if (sFalta > 0) {
+        const g = PRODUCTOS['SolMIX 80-20'], dens = DENSIDAD['SolMIX 80-20'];
+        const litros = r5(sFalta / (g.s / 100) / dens);
+        const kg = Math.round(litros * dens);
+        const nAp = kg * g.n / 100;
+        alternativa = {
+          producto: 'SolMIX 80-20', kg_ha: kg, litros_ha: litros, n: nAp, s: kg * g.s / 100,
+          nota: nAp > nFalta + 15
+            ? `Cubre todo el S en una pasada, chorreado en V4–V6, y aporta ~${Math.round(nAp - nFalta)} kg N/ha más de lo que pide el balance: acompaña rindes de 10–11 t/ha.`
+            : 'Cubre S y N en una sola pasada, chorreado en V4–V6.',
+        };
+      }
+      return { cultivo, modo: 'complemento', necesidad: { n: nNec, p: pNec, s: sNec, zn: znNec }, aplicado: ap, productos, notas, alternativa };
     }
 
     const map = pNec / 0.227, sa = sNec / 0.24;

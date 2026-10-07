@@ -112,6 +112,7 @@ export function AnalisisClient({ productores, ingeniero, userId }: { productores
     let t = `${productor?.razon_social ?? ''} · Lote ${lote.nombre} (${fmt(lote.hectareas, 0)} ha) · ${rec.cultivo === 'maiz' ? `Maíz ${fmt(rindeMaiz)} t/ha` : `Soja ${fmt(rindeSoja)} t/ha`}\n`;
     t += rec.modo === 'complemento' ? 'Fertilización complementaria:\n' : 'Fertilización a la siembra:\n';
     for (const p of rec.productos) t += `- ${p.producto}${p.kg_ha ? `: ${fmt(p.kg_ha, p.kg_ha < 5 ? 1 : 0)} kg/ha` : ''} (${p.momento})${p.kg_ha >= 5 ? ` → ${fmt(p.kg_ha * lote.hectareas / 1000, 1)} t` : ''}\n`;
+    if (rec.alternativa) { const x = rec.alternativa; t += `Alternativa líquida: ${x.producto} ${fmt(x.litros_ha, 0)} L/ha (${fmt(x.n, 0)} kg N y ${fmt(x.s, 1)} kg S) → ${fmt(x.litros_ha * lote.hectareas, 0)} L. Reemplaza al sulfato de amonio y la urea.\n`; }
     for (const n of rec.notas) t += `· ${n}\n`;
     return t + firma;
   }
@@ -281,6 +282,16 @@ export function AnalisisClient({ productores, ingeniero, userId }: { productores
                           <input type="number" min="0" className="field w-24 py-1" placeholder="sin dato"
                             value={nMedido[a.id] ?? ''} onChange={e => setNMedido(m => ({ ...m, [a.id]: e.target.value }))} />
                         </label>
+                      )}
+                      {rec.alternativa && (
+                        <div className="rounded border border-afa/40 bg-afa-tint p-3 space-y-1">
+                          <p className="text-[10px] uppercase tracking-wider text-afa font-bold">Alternativa líquida · reemplaza SA + urea</p>
+                          <div className="flex flex-wrap items-baseline justify-between gap-2">
+                            <span className="text-hi font-semibold">{rec.alternativa.producto}</span>
+                            <span className="font-mono text-hi"><b className="text-lg">{fmt(rec.alternativa.litros_ha, 0)}</b> L/ha <span className="text-mid">· {fmt(rec.alternativa.litros_ha * lote.hectareas, 0)} L lote</span></span>
+                          </div>
+                          <p className="text-[11px] text-mid">Aporta {fmt(rec.alternativa.n, 0)} kg N y {fmt(rec.alternativa.s, 1)} kg S por ha. {rec.alternativa.nota}</p>
+                        </div>
                       )}
                       {rec.notas.map(n => <p key={n} className="text-[11px] text-mid">· {n}</p>)}
                     </>
