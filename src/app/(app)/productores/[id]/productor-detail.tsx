@@ -431,6 +431,7 @@ export function ProductorDetail({ productor, campanas, ingeniero }:{ productor:P
         </div>
         <div className="flex gap-2 shrink-0">
           <button onClick={()=>setShowAplModal(true)} className="btn-afa text-xs py-1.5 px-3">+ Aplicación</button>
+          <Link href={`/analisis?productor=${productor.id}${campanaId ? `&campana=${campanaId}` : ''}`} className="btn-ghost text-xs py-1.5 px-3">🔬 Suelo</Link>
           <Link href={`/productores/${productor.id}/editar`} className="btn-ghost text-xs py-1.5 px-3">✏ Editar</Link>
         </div>
       </div>
