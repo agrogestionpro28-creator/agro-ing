@@ -567,7 +567,7 @@ export function InformesClient({
           <select
             value={productorId}
             onChange={e => setProductorId(e.target.value)}
-            className="input-field w-full text-sm"
+            className="field w-full text-sm"
           >
             <option value="">— seleccioná —</option>
             {productores.map(p => (
@@ -580,7 +580,7 @@ export function InformesClient({
           <select
             value={campanaId}
             onChange={e => setCampanaId(e.target.value)}
-            className="input-field w-full text-sm"
+            className="field w-full text-sm"
           >
             {campanas.map(c => (
               <option key={c.id} value={c.id}>{c.nombre}</option>
@@ -593,7 +593,7 @@ export function InformesClient({
             type="date"
             value={fechaDesde}
             onChange={e => setFechaDesde(e.target.value)}
-            className="input-field w-full text-sm"
+            className="field w-full text-sm"
           />
         </div>
         <div>
@@ -602,7 +602,7 @@ export function InformesClient({
             type="date"
             value={fechaHasta}
             onChange={e => setFechaHasta(e.target.value)}
-            className="input-field w-full text-sm"
+            className="field w-full text-sm"
           />
         </div>
       </div>
@@ -665,7 +665,7 @@ export function InformesClient({
                     <select
                       value={f.estado}
                       onChange={e => setFila(l.id, 'estado', e.target.value)}
-                      className="input-field w-full text-sm"
+                      className="field w-full text-sm"
                     >
                       <option value="">— sin estado —</option>
                       {estadosPara(l.cultivo).map(s => <option key={s} value={s}>{s}</option>)}
@@ -680,7 +680,7 @@ export function InformesClient({
                       onChange={e => setFila(l.id, 'comentario', e.target.value)}
                       placeholder="Observaciones del lote esta semana..."
                       rows={3}
-                      className="input-field w-full text-sm resize-none"
+                      className="field w-full text-sm resize-none"
                     />
                   </div>
 
@@ -695,7 +695,7 @@ export function InformesClient({
                       onChange={e => setFila(l.id, 'aplicacion', e.target.value)}
                       placeholder="Ej: 2 lt Glifo + 1 lt Cletodim + 50 cc Silicona"
                       rows={3}
-                      className="input-field w-full text-sm resize-none"
+                      className="field w-full text-sm resize-none"
                     />
                   </div>
                 </div>
