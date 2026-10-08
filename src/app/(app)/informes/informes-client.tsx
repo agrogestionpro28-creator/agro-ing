@@ -20,20 +20,96 @@ type LoteInforme = {
   imagenesPreview: (string | null)[]  // data URLs para preview
 }
 
-const ESTADOS = [
+// Estados por grupo de cultivo
+const ESTADOS_COMUNES = [
   'Barbecho largo',
+  'Barbecho corto',
   'Barbecho intermedio',
-  'Naciendo 🌱',
-  'V1 - V3',
-  'V4 - V6',
-  'Macollaje',
-  'Encañado',
-  'Floración',
-  'Llenado de grano',
-  'Madurez',
   'Cosechado',
   'Sin dato',
 ]
+
+const ESTADOS_SOJA = [
+  'Implantación',
+  'VE - Emergencia',
+  'V1 - V2',
+  'V3 - V5',
+  'V6 - V8',
+  'R1 - Floración',
+  'R2 - Floración plena',
+  'R3 - Inicio fructificación',
+  'R4 - Fructificación plena',
+  'R5 - Inicio llenado',
+  'R6 - Llenado pleno',
+  'R7 - Madurez fisiológica',
+  'R8 - Madurez cosecha',
+]
+
+const ESTADOS_MAIZ = [
+  'Implantación',
+  'VE - Emergencia',
+  'V1 - V3',
+  'V4 - V6',
+  'V7 - V9',
+  'V10 - V12',
+  'VT - Panojamiento',
+  'R1 - Silking / Floración',
+  'R2 - Ampolla',
+  'R3 - Lechoso',
+  'R4 - Masoso',
+  'R5 - Dentado',
+  'R6 - Madurez fisiológica',
+]
+
+const ESTADOS_TRIGO_CEBADA = [
+  'Implantación',
+  'Macollaje inicial',
+  'Macollaje activo',
+  'Encañado Z31',
+  'Encañado Z32-Z37',
+  'Hoja bandera Z39',
+  'Espigado Z55',
+  'Floración Z65',
+  'Grano acuoso',
+  'Grano lechoso',
+  'Grano pastoso',
+  'Madurez fisiológica',
+]
+
+const ESTADOS_SORGO = [
+  'Implantación',
+  'VE - Emergencia',
+  'V3 - V5',
+  'V6 - V9',
+  'Panojamiento',
+  'Floración',
+  'Grano lechoso',
+  'Grano pastoso',
+  'Madurez fisiológica',
+]
+
+const ESTADOS_GIRASOL = [
+  'Implantación',
+  'VE - Emergencia',
+  'V2 - V4',
+  'V6 - V8',
+  'R1 - Botón floral',
+  'R3 - Floración',
+  'R5 - Llenado de grano',
+  'R7 - Madurez fisiológica',
+  'R9 - Madurez cosecha',
+]
+
+function estadosPara(cultivo: string): string[] {
+  const s = (cultivo ?? '').toLowerCase()
+  let especificos: string[] = []
+  if (s.includes('soja')) especificos = ESTADOS_SOJA
+  else if (s.includes('maíz') || s.includes('maiz')) especificos = ESTADOS_MAIZ
+  else if (s.includes('trigo') || s.includes('cebada')) especificos = ESTADOS_TRIGO_CEBADA
+  else if (s.includes('sorgo')) especificos = ESTADOS_SORGO
+  else if (s.includes('girasol')) especificos = ESTADOS_GIRASOL
+  return [...especificos, ...ESTADOS_COMUNES]
+}
 
 function fmtFecha(iso: string) {
   if (!iso) return ''
@@ -592,7 +668,7 @@ export function InformesClient({
                       className="input-field w-full text-sm"
                     >
                       <option value="">— sin estado —</option>
-                      {ESTADOS.map(s => <option key={s} value={s}>{s}</option>)}
+                      {estadosPara(l.cultivo).map(s => <option key={s} value={s}>{s}</option>)}
                     </select>
                   </div>
 
