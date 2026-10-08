@@ -16,6 +16,8 @@ type LoteInforme = {
   comentario: string
   aplicacion: string   // texto libre: "2 lt Glifo + 1 lt Cletodim + 50 cc Silicona"
   esta_semana: boolean // interno — no aparece en el informe
+  imagenes: (File | null)[]  // hasta 2 imágenes
+  imagenesPreview: (string | null)[]  // data URLs para preview
 }
 
 const ESTADOS = [
@@ -45,6 +47,17 @@ function semanaDelAnio(fecha: Date) {
   return Math.ceil((diff / 86400000 + oneJan.getDay() + 1) / 7)
 }
 
+// Carga una imagen desde File y devuelve HTMLImageElement
+function loadImageFromFile(file: File): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file)
+    const img = new Image()
+    img.onload = () => { URL.revokeObjectURL(url); resolve(img) }
+    img.onerror = reject
+    img.src = url
+  })
+}
+
 export function InformesClient({
   productores,
   campanas,
@@ -58,11 +71,9 @@ export function InformesClient({
   const { campanaId: campanaCtxId } = useCampana()
 
   // ── estado global ──────────────────────────────────────────────
-  // inicializa con la primera campaña; se actualiza cuando el contexto del header hidrata
   const [campanaId, setCampanaId] = useState(() => campanas[0]?.id ?? '')
   const [productorId, setProductorId] = useState('')
 
-  // sincronizar cuando el contexto del header tenga la campaña activa
   useEffect(() => {
     if (campanaCtxId && campanaCtxId !== campanaId) {
       setCampanaId(campanaCtxId)
@@ -75,7 +86,7 @@ export function InformesClient({
 
   // fechas por defecto: lunes y domingo de la semana actual
   const hoy = new Date()
-  const dow = hoy.getDay() === 0 ? 6 : hoy.getDay() - 1 // 0=lun
+  const dow = hoy.getDay() === 0 ? 6 : hoy.getDay() - 1
   const lunes = new Date(hoy); lunes.setDate(hoy.getDate() - dow)
   const domingo = new Date(lunes); domingo.setDate(lunes.getDate() + 6)
   const fmtISO = (d: Date) => d.toISOString().slice(0, 10)
@@ -95,7 +106,6 @@ export function InformesClient({
         .order('nombre')
       const ls: Lote[] = data ?? []
       setLotes(ls)
-      // inicializar filas que no existen
       setFilas(prev => {
         const next = { ...prev }
         ls.forEach(l => {
@@ -109,6 +119,8 @@ export function InformesClient({
               comentario: '',
               aplicacion: '',
               esta_semana: false,
+              imagenes: [null, null],
+              imagenesPreview: [null, null],
             }
           }
         })
@@ -121,6 +133,34 @@ export function InformesClient({
     setFilas(prev => ({ ...prev, [loteId]: { ...prev[loteId], [campo]: valor } }))
   }
 
+  // Maneja la selección de imagen para un lote (slot 0 o 1)
+  function handleImagenChange(loteId: string, slot: 0 | 1, file: File | null) {
+    if (!file) {
+      setFilas(prev => {
+        const f = { ...prev[loteId] }
+        const imgs = [...f.imagenes] as (File | null)[]
+        const prevs = [...f.imagenesPreview] as (string | null)[]
+        imgs[slot] = null
+        prevs[slot] = null
+        return { ...prev, [loteId]: { ...f, imagenes: imgs, imagenesPreview: prevs } }
+      })
+      return
+    }
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      const dataUrl = e.target?.result as string
+      setFilas(prev => {
+        const f = { ...prev[loteId] }
+        const imgs = [...f.imagenes] as (File | null)[]
+        const prevs = [...f.imagenesPreview] as (string | null)[]
+        imgs[slot] = file
+        prevs[slot] = dataUrl
+        return { ...prev, [loteId]: { ...f, imagenes: imgs, imagenesPreview: prevs } }
+      })
+    }
+    reader.readAsDataURL(file)
+  }
+
   // lotes con "esta semana" tildado
   const lotesInforme = lotes
     .map(l => filas[l.id])
@@ -129,14 +169,32 @@ export function InformesClient({
   // ── generar imagen para WhatsApp ───────────────────────────────
   const canvasRef = useRef<HTMLCanvasElement>(null)
 
-  function generarImagen() {
+  async function generarImagen() {
     const canvas = canvasRef.current
     if (!canvas || lotesInforme.length === 0) return
 
+    // Pre-cargar todas las imágenes de los lotes
+    const imgObjects: (HTMLImageElement | null)[][] = await Promise.all(
+      lotesInforme.map(async f => {
+        const imgs = await Promise.all(
+          (f.imagenes ?? [null, null]).map(async file => {
+            if (!file) return null
+            try { return await loadImageFromFile(file) } catch { return null }
+          })
+        )
+        return imgs
+      })
+    )
+
     const W = 900
-    const ROW_H = 110
+    // Altura de cada fila: base + espacio para imágenes si las hay
+    const getRowH = (idx: number) => {
+      const hasImgs = imgObjects[idx].some(i => i !== null)
+      return hasImgs ? 230 : 110
+    }
     const HEAD_H = 160
-    const H = HEAD_H + lotesInforme.length * ROW_H + 80
+    const totalRows = lotesInforme.reduce((acc, _, i) => acc + getRowH(i), 0)
+    const H = HEAD_H + totalRows + 80
     canvas.width = W
     canvas.height = H
 
@@ -187,11 +245,15 @@ export function InformesClient({
     ctx.fillRect(0, HEAD_H - 8, W, 3)
 
     // filas
+    let currentY = HEAD_H
     lotesInforme.forEach((f, i) => {
-      const y = HEAD_H + i * ROW_H
+      const rowH = getRowH(i)
+      const y = currentY
+      const hasImgs = imgObjects[i].some(img => img !== null)
+
       // fondo alterno
       ctx.fillStyle = i % 2 === 0 ? '#111111' : '#151515'
-      ctx.fillRect(0, y, W, ROW_H)
+      ctx.fillRect(0, y, W, rowH)
 
       // badge cultivo
       const cultColor = cultColorFor(f.cultivo)
@@ -224,7 +286,8 @@ export function InformesClient({
       if (f.comentario) {
         ctx.fillStyle = '#cccccc'
         ctx.font = '12px Inter,sans-serif'
-        const lines = wrapText(ctx, f.comentario, 580, 12)
+        const maxW = hasImgs ? 380 : 580
+        const lines = wrapText(ctx, f.comentario, maxW, 12)
         lines.forEach((ln, li) => ctx.fillText(ln, 220, y + 44 + li * 16))
       }
 
@@ -232,12 +295,38 @@ export function InformesClient({
       if (f.aplicacion) {
         ctx.fillStyle = '#f59e0b'
         ctx.font = 'bold 11px Inter,sans-serif'
-        ctx.fillText('📦 ' + f.aplicacion, 220, y + ROW_H - 18)
+        ctx.fillText('📦 ' + f.aplicacion, 220, y + (hasImgs ? 100 : rowH - 18))
+      }
+
+      // imágenes (si las hay) — a la derecha, dos columnas
+      if (hasImgs) {
+        const IMG_W = 170
+        const IMG_H = 130
+        const IMG_Y = y + 14
+        imgObjects[i].forEach((img, slot) => {
+          if (!img) return
+          const IMG_X = W - (2 - slot) * (IMG_W + 12) - 20
+          // recorte proporcional centrado (cover)
+          const scale = Math.max(IMG_W / img.naturalWidth, IMG_H / img.naturalHeight)
+          const sw = IMG_W / scale
+          const sh = IMG_H / scale
+          const sx = (img.naturalWidth - sw) / 2
+          const sy = (img.naturalHeight - sh) / 2
+          // borde redondeado (clip)
+          ctx.save()
+          ctx.beginPath()
+          ;(ctx as any).roundRect?.(IMG_X, IMG_Y, IMG_W, IMG_H, 6) || (() => { ctx.rect(IMG_X, IMG_Y, IMG_W, IMG_H) })()
+          ctx.clip()
+          ctx.drawImage(img, sx, sy, sw, sh, IMG_X, IMG_Y, IMG_W, IMG_H)
+          ctx.restore()
+        })
       }
 
       // separador
       ctx.fillStyle = '#222'
-      ctx.fillRect(0, y + ROW_H - 1, W, 1)
+      ctx.fillRect(0, y + rowH - 1, W, 1)
+
+      currentY += rowH
     })
 
     // firma abajo
@@ -299,7 +388,7 @@ export function InformesClient({
   async function compartirImagen() {
     const canvas = canvasRef.current
     if (!canvas) return
-    generarImagen()
+    await generarImagen()
     canvas.toBlob(async blob => {
       if (!blob) return
       const file = new File([blob], 'informe-semanal.png', { type: 'image/png' })
@@ -319,7 +408,6 @@ export function InformesClient({
     if (!productorId || !campanaId) return
     setGuardando(true)
     try {
-      // 1. upsert informes_semanales
       const { data: inf, error: e1 } = await (sb as any)
         .from('informes_semanales')
         .upsert({
@@ -334,7 +422,6 @@ export function InformesClient({
         .single()
       if (e1) throw e1
 
-      // 2. upsert observaciones_lote para cada fila completa
       const rows = lotes
         .map(l => filas[l.id])
         .filter(f => f && (f.estado || f.comentario || f.aplicacion))
@@ -464,7 +551,7 @@ export function InformesClient({
             {lotes.length} lotes · Tildá <strong className="text-ochre">"Esta semana"</strong> en los que visitaste
           </p>
           {lotes.map(l => {
-            const f = filas[l.id] ?? { esta_semana: false, estado: '', comentario: '', aplicacion: '' }
+            const f = filas[l.id] ?? { esta_semana: false, estado: '', comentario: '', aplicacion: '', imagenes: [null, null], imagenesPreview: [null, null] }
             return (
               <div
                 key={l.id}
@@ -494,7 +581,7 @@ export function InformesClient({
                   </label>
                 </div>
 
-                {/* Campos — siempre visibles para poder escribir */}
+                {/* Campos */}
                 <div className="grid md:grid-cols-3 gap-3">
                   {/* Estado */}
                   <div>
@@ -536,6 +623,47 @@ export function InformesClient({
                     />
                   </div>
                 </div>
+
+                {/* Imágenes — hasta 2 por lote */}
+                <div className="mt-3 pt-3 border-t border-base-5">
+                  <p className="label-xs text-mid mb-2">Fotos del lote <span className="text-lo">(hasta 2)</span></p>
+                  <div className="flex gap-3 flex-wrap">
+                    {([0, 1] as const).map(slot => {
+                      const preview = f.imagenesPreview?.[slot] ?? null
+                      return (
+                        <div key={slot} className="relative">
+                          {preview ? (
+                            <div className="relative group">
+                              <img
+                                src={preview}
+                                alt={`Foto ${slot + 1}`}
+                                className="w-28 h-20 object-cover rounded border border-base-5"
+                              />
+                              <button
+                                onClick={() => handleImagenChange(l.id, slot, null)}
+                                className="absolute top-1 right-1 bg-black/70 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs leading-none opacity-0 group-hover:opacity-100 transition-opacity"
+                                title="Quitar foto"
+                              >
+                                ×
+                              </button>
+                            </div>
+                          ) : (
+                            <label className="w-28 h-20 border-2 border-dashed border-base-5 rounded flex flex-col items-center justify-center cursor-pointer hover:border-ochre transition-colors gap-1">
+                              <span className="text-xl">📷</span>
+                              <span className="text-lo text-xs">Foto {slot + 1}</span>
+                              <input
+                                type="file"
+                                accept="image/*"
+                                className="hidden"
+                                onChange={e => handleImagenChange(l.id, slot, e.target.files?.[0] ?? null)}
+                              />
+                            </label>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
               </div>
             )
           })}
@@ -564,35 +692,53 @@ export function InformesClient({
               Ningún lote tildado como "esta semana" todavía
             </p>
           ) : (
-            <table className="w-full text-sm border-collapse">
-              <thead>
-                <tr className="border-b border-base-5">
-                  <th className="text-left py-2 pr-4 text-mid font-semibold text-xs uppercase">Lote</th>
-                  <th className="text-left py-2 pr-4 text-mid font-semibold text-xs uppercase">Estado</th>
-                  <th className="text-left py-2 pr-4 text-mid font-semibold text-xs uppercase">Comentario</th>
-                  <th className="text-left py-2 text-mid font-semibold text-xs uppercase">Aplicación</th>
-                </tr>
-              </thead>
-              <tbody>
-                {lotesInforme.map((f, i) => (
-                  <tr key={f.lote_id} className={i % 2 === 0 ? 'bg-base-2' : ''}>
-                    <td className="py-2 pr-4 font-bold text-ochre align-top whitespace-nowrap">
-                      {f.nombre}
-                      <span className="text-lo text-xs font-normal ml-1">{f.hectareas} ha</span>
-                    </td>
-                    <td className="py-2 pr-4 text-green-400 align-top whitespace-nowrap">
-                      {f.estado || <span className="text-lo">—</span>}
-                    </td>
-                    <td className="py-2 pr-4 text-mid align-top">
-                      {f.comentario || <span className="text-lo">—</span>}
-                    </td>
-                    <td className="py-2 text-hi align-top">
-                      {f.aplicacion || <span className="text-lo">—</span>}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <div className="space-y-4">
+              {lotesInforme.map((f, i) => {
+                const previews = (f.imagenesPreview ?? []).filter(Boolean) as string[]
+                return (
+                  <div key={f.lote_id} className={`rounded border border-base-5 p-3 ${i % 2 === 0 ? 'bg-base-2' : ''}`}>
+                    <div className="flex flex-wrap gap-4">
+                      {/* Info */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span
+                            className="text-xs font-bold px-2 py-0.5 rounded"
+                            style={{ background: cultColorFor(f.cultivo), color: '#000' }}
+                          >
+                            {abrevCult(f.cultivo)}
+                          </span>
+                          <span className="text-ochre font-bold">{f.nombre}</span>
+                          <span className="text-lo text-xs">{f.hectareas} ha</span>
+                          {f.estado && (
+                            <span className="text-green-400 text-xs font-semibold">{f.estado}</span>
+                          )}
+                        </div>
+                        {f.comentario && (
+                          <p className="text-mid text-sm mb-1">{f.comentario}</p>
+                        )}
+                        {f.aplicacion && (
+                          <p className="text-ochre text-xs font-semibold">📦 {f.aplicacion}</p>
+                        )}
+                      </div>
+
+                      {/* Fotos en preview */}
+                      {previews.length > 0 && (
+                        <div className="flex gap-2 shrink-0">
+                          {previews.map((src, si) => (
+                            <img
+                              key={si}
+                              src={src}
+                              alt={`Foto ${si + 1}`}
+                              className="w-24 h-16 object-cover rounded border border-base-5"
+                            />
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
           )}
 
           {/* Firma */}
