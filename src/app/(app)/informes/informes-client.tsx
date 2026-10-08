@@ -461,6 +461,23 @@ export function InformesClient({
     return c?.slice(0, 3).toUpperCase() ?? '---'
   }
 
+  async function descargarImagen() {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    await generarImagen()
+    canvas.toBlob(blob => {
+      if (!blob) return
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      const productor = productores.find(p => p.id === productorId)
+      const semana = semanaDelAnio(new Date(fechaDesde + 'T12:00:00'))
+      a.href = url
+      a.download = `informe-semana${semana}-${(productor?.razon_social ?? 'lote').replace(/\s+/g, '-').toLowerCase()}.png`
+      a.click()
+      URL.revokeObjectURL(url)
+    })
+  }
+
   async function compartirImagen() {
     const canvas = canvasRef.current
     if (!canvas) return
@@ -471,6 +488,7 @@ export function InformesClient({
       if (navigator.canShare?.({ files: [file] })) {
         await navigator.share({ files: [file], title: 'Informe Semanal' })
       } else {
+        // fallback: descargar directo
         const url = URL.createObjectURL(blob)
         const a = document.createElement('a')
         a.href = url; a.download = 'informe-semanal.png'; a.click()
@@ -546,9 +564,14 @@ export function InformesClient({
             {vista === 'carga' ? '👁 Ver informe' : '✏️ Editar'}
           </button>
           {vista === 'preview' && lotesInforme.length > 0 && (
-            <button onClick={compartirImagen} className="btn-ochre text-sm">
-              📷 Compartir imagen
-            </button>
+            <>
+              <button onClick={descargarImagen} className="btn-ghost text-sm">
+                ⬇️ Descargar
+              </button>
+              <button onClick={compartirImagen} className="btn-ochre text-sm">
+                📤 Compartir
+              </button>
+            </>
           )}
           <button
             onClick={guardarInforme}
