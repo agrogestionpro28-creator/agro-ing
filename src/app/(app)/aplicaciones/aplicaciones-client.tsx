@@ -15,8 +15,8 @@ type Aplicacion = {
   productor_id: string
   productor_nombre: string
   fecha: string
-  estado: string
-  aplicacion: string   // texto libre: "2 lt Glifo + ..."
+  tipo: string        // Herbicida, Fungicida, Fertilizacion, etc.
+  productos: string
   semana: number
 }
 
@@ -93,44 +93,37 @@ export function AplicacionesClient({
       const loteIds = (lotesData ?? []).map((l: any) => l.id)
       if (loteIds.length === 0) { setAplicaciones([]); return }
 
-      // 2. Traer observaciones de esos lotes con tipo informe_semanal
-      const { data: obs, error: errObs } = await (sb as any)
-        .from('observaciones_lote')
-        .select('id, fecha, datos_extra, lote_id')
-        .eq('tipo', 'informe_semanal')
+      // 2. Traer aplicaciones de esos lotes (tabla 'aplicaciones')
+      const { data: apls, error: errApls } = await (sb as any)
+        .from('aplicaciones')
+        .select('id, lote_id, fecha, tipo, productos')
         .in('lote_id', loteIds)
         .order('fecha', { ascending: true })
 
-      if (errObs) { console.error('Error obs:', errObs); return }
+      if (errApls) { console.error('Error aplicaciones:', errApls); return }
 
       // 3. Mapa de lotes para lookup rápido
       const lotesMap: Record<string, any> = {}
       ;(lotesData ?? []).forEach((l: any) => { lotesMap[l.id] = l })
 
-      // 4. Filtrar solo las que tienen aplicacion cargada y mapear
-      const lista: Aplicacion[] = (obs ?? [])
-        .filter((o: any) => {
-          const app = o.datos_extra?.aplicacion
-          return app && String(app).trim() !== ''
-        })
-        .map((o: any) => {
-          const lote = lotesMap[o.lote_id]
-          return {
-            id: o.id,
-            lote_id: o.lote_id,
-            lote_nombre: lote?.nombre ?? '?',
-            lote_hectareas: lote?.hectareas ?? 0,
-            lote_cultivo: lote?.cultivo ?? '',
-            productor_id: lote?.productores?.id ?? lote?.productor_id ?? '',
-            productor_nombre: lote?.productores?.razon_social ?? '',
-            fecha: o.fecha,
-            estado: o.datos_extra?.estado ?? '',
-            aplicacion: String(o.datos_extra?.aplicacion ?? ''),
-            semana: semanaDeIso(o.fecha),
-          }
-        })
+      // 4. Mapear
+      const lista: Aplicacion[] = (apls ?? []).map((a: any) => {
+        const lote = lotesMap[a.lote_id]
+        return {
+          id: a.id,
+          lote_id: a.lote_id,
+          lote_nombre: lote?.nombre ?? '?',
+          lote_hectareas: lote?.hectareas ?? 0,
+          lote_cultivo: lote?.cultivo ?? '',
+          productor_id: lote?.productores?.id ?? lote?.productor_id ?? '',
+          productor_nombre: lote?.productores?.razon_social ?? '',
+          fecha: a.fecha,
+          tipo: a.tipo ?? '',
+          productos: a.productos ?? '',
+          semana: semanaDeIso(a.fecha),
+        }
+      })
 
-      console.log(`[Aplicaciones] ${loteIds.length} lotes, ${(obs??[]).length} obs, ${lista.length} con aplicacion`)
       setAplicaciones(lista)
     } finally {
       setCargando(false)
@@ -329,15 +322,17 @@ export function AplicacionesClient({
                                       {apps.map(a => (
                                         <div
                                           key={a.id}
-                                          className="rounded p-1.5 text-[10px] leading-snug group relative"
+                                          className="rounded p-1.5 text-[10px] leading-snug"
                                           style={{ background: color + '22', borderLeft: `2px solid ${color}` }}
                                         >
-                                          {/* Estado */}
-                                          {a.estado && (
-                                            <p className="font-bold text-green-400 mb-0.5 text-[9px] uppercase">{a.estado}</p>
+                                          {/* Tipo */}
+                                          {a.tipo && (
+                                            <p className="font-bold text-ochre mb-0.5 text-[9px] uppercase">{a.tipo}</p>
                                           )}
-                                          {/* Aplicación */}
-                                          <p className="text-hi">{a.aplicacion}</p>
+                                          {/* Productos */}
+                                          {a.productos && (
+                                            <p className="text-hi">{a.productos}</p>
+                                          )}
                                           {/* Fecha chica */}
                                           <p className="text-lo text-[9px] mt-0.5">{fmtFecha(a.fecha)}</p>
                                         </div>
