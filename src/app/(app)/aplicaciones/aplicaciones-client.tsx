@@ -82,43 +82,55 @@ export function AplicacionesClient({
   async function cargar() {
     setCargando(true)
     try {
-      // Traer observaciones tipo informe_semanal con aplicación cargada
-      // JOIN con lotes y productores via lote_id
-      const { data: obs } = await (sb as any)
+      // 1. Traer lotes de la campaña seleccionada
+      const { data: lotesData, error: errLotes } = await (sb as any)
+        .from('lotes')
+        .select('id, nombre, hectareas, cultivo, productor_id, productores!inner(id, razon_social)')
+        .eq('campana_id', campanaId)
+
+      if (errLotes) { console.error('Error lotes:', errLotes); return }
+
+      const loteIds = (lotesData ?? []).map((l: any) => l.id)
+      if (loteIds.length === 0) { setAplicaciones([]); return }
+
+      // 2. Traer observaciones de esos lotes con tipo informe_semanal
+      const { data: obs, error: errObs } = await (sb as any)
         .from('observaciones_lote')
-        .select(`
-          id,
-          fecha,
-          datos_extra,
-          lotes!inner (
-            id,
-            nombre,
-            hectareas,
-            cultivo,
-            campana_id,
-            productor_id,
-            productores!inner ( id, razon_social )
-          )
-        `)
+        .select('id, fecha, datos_extra, lote_id')
         .eq('tipo', 'informe_semanal')
-        .eq('lotes.campana_id', campanaId)
-        .not('datos_extra->>aplicacion', 'is', null)
-        .neq('datos_extra->>aplicacion', '')
+        .in('lote_id', loteIds)
         .order('fecha', { ascending: true })
 
-      const lista: Aplicacion[] = (obs ?? []).map((o: any) => ({
-        id: o.id,
-        lote_id: o.lotes.id,
-        lote_nombre: o.lotes.nombre,
-        lote_hectareas: o.lotes.hectareas,
-        lote_cultivo: o.lotes.cultivo,
-        productor_id: o.lotes.productores.id,
-        productor_nombre: o.lotes.productores.razon_social,
-        fecha: o.fecha,
-        estado: o.datos_extra?.estado ?? '',
-        aplicacion: o.datos_extra?.aplicacion ?? '',
-        semana: semanaDeIso(o.fecha),
-      }))
+      if (errObs) { console.error('Error obs:', errObs); return }
+
+      // 3. Mapa de lotes para lookup rápido
+      const lotesMap: Record<string, any> = {}
+      ;(lotesData ?? []).forEach((l: any) => { lotesMap[l.id] = l })
+
+      // 4. Filtrar solo las que tienen aplicacion cargada y mapear
+      const lista: Aplicacion[] = (obs ?? [])
+        .filter((o: any) => {
+          const app = o.datos_extra?.aplicacion
+          return app && String(app).trim() !== ''
+        })
+        .map((o: any) => {
+          const lote = lotesMap[o.lote_id]
+          return {
+            id: o.id,
+            lote_id: o.lote_id,
+            lote_nombre: lote?.nombre ?? '?',
+            lote_hectareas: lote?.hectareas ?? 0,
+            lote_cultivo: lote?.cultivo ?? '',
+            productor_id: lote?.productores?.id ?? lote?.productor_id ?? '',
+            productor_nombre: lote?.productores?.razon_social ?? '',
+            fecha: o.fecha,
+            estado: o.datos_extra?.estado ?? '',
+            aplicacion: String(o.datos_extra?.aplicacion ?? ''),
+            semana: semanaDeIso(o.fecha),
+          }
+        })
+
+      console.log(`[Aplicaciones] ${loteIds.length} lotes, ${(obs??[]).length} obs, ${lista.length} con aplicacion`)
       setAplicaciones(lista)
     } finally {
       setCargando(false)
