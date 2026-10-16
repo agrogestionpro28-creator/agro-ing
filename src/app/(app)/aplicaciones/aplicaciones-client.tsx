@@ -89,6 +89,7 @@ export function AplicacionesClient({ productores, campanas }: {
   const [aplicaciones, setAplicaciones]   = useState<Aplicacion[]>([])
   const [cargando, setCargando]           = useState(false)
   const [tipoFiltro, setTipoFiltro]       = useState('todos')
+  const [cultivoFiltro, setCultivoFiltro] = useState('todos')
 
   useEffect(() => {
     if (campanaCtxId && campanaCtxId !== campanaId) setCampanaId(campanaCtxId)
@@ -137,14 +138,20 @@ export function AplicacionesClient({ productores, campanas }: {
     }
   }
 
+  // Cultivos únicos para filtro
+  const cultivosUnicos = [...new Set(lotes.map(l => l.cultivo).filter(Boolean))].sort()
+
   // Filtros
-  const lotesFiltrados = lotes.filter(l =>
-    productorFiltro === 'todos' || l.productor_id === productorFiltro
-  )
+  const lotesFiltrados = lotes.filter(l => {
+    if (productorFiltro !== 'todos' && l.productor_id !== productorFiltro) return false
+    if (cultivoFiltro !== 'todos' && l.cultivo !== cultivoFiltro) return false
+    return true
+  })
   const aplsFiltradas = aplicaciones.filter(a => {
     const lote = lotes.find(l => l.id === a.lote_id)
     if (!lote) return false
     if (productorFiltro !== 'todos' && lote.productor_id !== productorFiltro) return false
+    if (cultivoFiltro !== 'todos' && lote.cultivo !== cultivoFiltro) return false
     if (tipoFiltro !== 'todos' && a.tipo !== tipoFiltro) return false
     return true
   })
@@ -200,6 +207,15 @@ export function AplicacionesClient({ productores, campanas }: {
           <select value={productorFiltro} onChange={e => setProductorFiltro(e.target.value)} className="field text-sm">
             <option value="todos">Todos</option>
             {productores.map(p => <option key={p.id} value={p.id}>{p.razon_social}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className="label-xs text-lo block mb-1">Cultivo</label>
+          <select value={cultivoFiltro} onChange={e => setCultivoFiltro(e.target.value)} className="field text-sm">
+            <option value="todos">Todos</option>
+            {cultivosUnicos.map(c => (
+              <option key={c} value={c}>{c}</option>
+            ))}
           </select>
         </div>
         <div>
