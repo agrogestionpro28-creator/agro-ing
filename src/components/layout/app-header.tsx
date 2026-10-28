@@ -14,6 +14,7 @@ const TABS = [
   { href: '/analisis',    label: 'Análisis',    icon: '🔬' },
   { href: '/recetas',     label: 'Recetas',     icon: '📋' },
   { href: '/bitacora',    label: 'Bitácora',    icon: '⬡' },
+  { href: '/siembra',       label: 'Siembra',       icon: '🌾' },
   { href: '/informes',      label: 'Informes',      icon: '📝' },
   { href: '/aplicaciones',  label: 'Aplicaciones',  icon: '🌱' },
 ] as const;
