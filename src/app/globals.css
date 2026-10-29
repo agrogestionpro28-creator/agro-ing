@@ -13,7 +13,8 @@
   }
 
   body {
-    background: #080c10;
+    background: linear-gradient(135deg, #0a1628 0%, #0d2a1e 40%, #0a1f30 70%, #111827 100%);
+    background-attachment: fixed;
     color: #f0f6ff;
     font-family: 'Inter', system-ui, sans-serif;
     min-height: 100vh;
@@ -71,9 +72,12 @@
   /* ── Card base ── */
   .card {
     @apply bg-base-2 border border-base-4 rounded-card;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-color: rgba(34, 211, 160, 0.12);
   }
   .card-elevated {
-    @apply card shadow-[0_4px_24px_rgba(0,0,0,0.4)];
+    @apply card shadow-[0_4px_32px_rgba(0,0,0,0.35)];
   }
 
   /* ── Labels ── */
@@ -87,7 +91,6 @@
   /* ── Filter bar ── */
   .filter-bar {
     @apply card p-3 flex flex-wrap gap-3 items-end;
-    background: #0d1117;
   }
   .filter-group {
     @apply flex flex-col gap-1;

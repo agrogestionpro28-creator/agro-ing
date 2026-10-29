@@ -5,14 +5,14 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        // Base azul-negra profunda
+        // Base con tinte azul-verde (para cards/surfaces sobre el degradé)
         base: {
-          DEFAULT: '#080c10',
-          2: '#0d1117',
-          3: '#111820',
-          4: '#1a2332',
-          5: '#243040',
-          6: '#2e3d52',
+          DEFAULT: 'rgba(10,22,40,0.0)',
+          2: 'rgba(13,26,36,0.55)',
+          3: 'rgba(16,32,46,0.70)',
+          4: 'rgba(20,38,56,0.80)',
+          5: 'rgba(30,50,72,0.90)',
+          6: 'rgba(40,64,88,0.95)',
         },
         // Verde esmeralda — acento principal
         ochre: {

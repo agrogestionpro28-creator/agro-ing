@@ -118,12 +118,18 @@ export function AppHeader({
 
       <aside className={`
         fixed top-0 left-0 h-full z-40 flex flex-col
-        bg-[#060a0e] border-r border-base-4
+        border-r
         transition-transform duration-300 ease-out
         w-56
         ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
         lg:translate-x-0 lg:static lg:h-screen lg:shrink-0
-      `}>
+      `}
+      style={{
+        background: 'rgba(8,16,26,0.75)',
+        borderColor: 'rgba(34,211,160,0.15)',
+        backdropFilter: 'blur(20px)',
+        WebkitBackdropFilter: 'blur(20px)',
+      }}>
         {/* Logo / Marca */}
         <div className="px-5 py-5 border-b border-base-4/60">
           <div className="flex items-center gap-2.5">
@@ -231,7 +237,7 @@ export function AppHeader({
       </aside>
 
       {/* ── TOP BAR (mobile) ────────────────────────────────── */}
-      <header className="lg:hidden sticky top-0 z-30 bg-[#060a0e] border-b border-base-4 flex items-center gap-3 px-4 py-3">
+      <header className="lg:hidden sticky top-0 z-30 border-b flex items-center gap-3 px-4 py-3" style={{ background: "rgba(8,16,26,0.85)", borderColor: "rgba(34,211,160,0.15)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)" }}>
         <button
           onClick={() => setSidebarOpen(true)}
           className="p-1.5 rounded-lg hover:bg-base-3 text-mid hover:text-hi transition-all"
