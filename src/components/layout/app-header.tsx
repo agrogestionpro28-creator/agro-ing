@@ -118,7 +118,7 @@ export function AppHeader({
 
       <aside className={`
         fixed top-0 left-0 h-full z-40 flex flex-col
-        bg-[#0c0c0c] border-r border-base-4
+        bg-[#060a0e] border-r border-base-4
         transition-transform duration-300 ease-out
         w-56
         ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
@@ -129,7 +129,7 @@ export function AppHeader({
           <div className="flex items-center gap-2.5">
             <div
               className="w-8 h-8 rounded-lg flex items-center justify-center font-black text-xs shrink-0"
-              style={{ background: 'linear-gradient(135deg,#2EAA6E 0%,#1a6640 100%)', color: '#fff' }}
+              style={{ background: 'linear-gradient(135deg,#22d3a0 0%,#0284c7 100%)', color: '#060a0e' }}
             >
               AG
             </div>
@@ -170,8 +170,8 @@ export function AppHeader({
                   flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold
                   transition-all duration-150 group
                   ${active
-                    ? 'bg-ochre/15 text-ochre'
-                    : 'text-mid hover:text-hi hover:bg-base-3'}
+                    ? 'bg-ochre/10 text-ochre'
+                    : 'text-mid hover:text-hi hover:bg-base-4'}
                 `}
               >
                 <Icon className={`w-4 h-4 shrink-0 ${active ? 'text-ochre' : 'text-lo group-hover:text-mid'}`} />
@@ -193,7 +193,7 @@ export function AppHeader({
             >
               <div
                 className="w-8 h-8 rounded-lg flex items-center justify-center font-black text-xs shrink-0"
-                style={{ background: 'linear-gradient(135deg,#2EAA6E 0%,#1a6640 100%)', color: '#fff' }}
+                style={{ background: 'linear-gradient(135deg,#22d3a0 0%,#0284c7 100%)', color: '#060a0e' }}
               >
                 {initials}
               </div>
@@ -231,7 +231,7 @@ export function AppHeader({
       </aside>
 
       {/* ── TOP BAR (mobile) ────────────────────────────────── */}
-      <header className="lg:hidden sticky top-0 z-30 bg-[#0c0c0c] border-b border-base-4 flex items-center gap-3 px-4 py-3">
+      <header className="lg:hidden sticky top-0 z-30 bg-[#060a0e] border-b border-base-4 flex items-center gap-3 px-4 py-3">
         <button
           onClick={() => setSidebarOpen(true)}
           className="p-1.5 rounded-lg hover:bg-base-3 text-mid hover:text-hi transition-all"
@@ -244,7 +244,7 @@ export function AppHeader({
         <div className="flex items-center gap-2">
           <div
             className="w-6 h-6 rounded-md flex items-center justify-center font-black text-[10px]"
-            style={{ background: 'linear-gradient(135deg,#2EAA6E,#1a6640)', color: '#fff' }}
+            style={{ background: 'linear-gradient(135deg,#22d3a0,#0284c7)', color: '#060a0e' }}
           >
             AG
           </div>

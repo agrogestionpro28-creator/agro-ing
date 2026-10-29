@@ -5,39 +5,46 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        // Base oscura
+        // Base azul-negra profunda
         base: {
-          DEFAULT: '#0a0a0a',
-          2: '#111111',
-          3: '#131313',
-          4: '#1a1a1a',
-          5: '#262626',
-          6: '#333333',
+          DEFAULT: '#080c10',
+          2: '#0d1117',
+          3: '#111820',
+          4: '#1a2332',
+          5: '#243040',
+          6: '#2e3d52',
         },
-        // Ocre/dorado
+        // Verde esmeralda — acento principal
         ochre: {
-          DEFAULT: '#f59e0b',
-          dark: '#d97706',
-          light: '#fcd34d',
-          muted: '#92400e',
-          tint: 'rgba(245,158,11,0.10)',
+          DEFAULT: '#22d3a0',
+          dark: '#16a87e',
+          light: '#5eead4',
+          muted: '#0d5c45',
+          tint: 'rgba(34,211,160,0.10)',
         },
-        // Verde AFA
+        // Verde AFA (más intenso, compite con esmeralda — unificamos)
         afa: {
-          DEFAULT: '#2EAA6E',
-          dark: '#1d7a4d',
-          light: '#4dc88a',
-          tint: 'rgba(46,170,110,0.12)',
+          DEFAULT: '#22d3a0',
+          dark: '#16a87e',
+          light: '#5eead4',
+          tint: 'rgba(34,211,160,0.12)',
+        },
+        // Azul cielo — acento secundario
+        sky: {
+          DEFAULT: '#38bdf8',
+          dark: '#0284c7',
+          light: '#7dd3fc',
+          tint: 'rgba(56,189,248,0.10)',
         },
         // Texto
-        hi: '#f0f0f0',
-        mid: '#888888',
-        lo: '#555555',
-        faint: '#3a3a3a',
-        subtle: '#6b7280',
+        hi: '#f0f6ff',
+        mid: '#7a90a8',
+        lo: '#4a5c70',
+        faint: '#1a2740',
+        subtle: '#5a7288',
         // Estados
-        danger: '#ef4444',
-        warn: '#f59e0b',
+        danger: '#f87171',
+        warn: '#fbbf24',
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],

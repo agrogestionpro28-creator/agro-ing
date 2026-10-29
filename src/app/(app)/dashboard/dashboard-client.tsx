@@ -10,12 +10,12 @@ type HasRow      = { productor_id: string; campana_id: string; hectareas_total: 
 type CobranzaRow = { productor_id: string; campana_id: string; estado: string; total_cobrado: number; monto_unitario: number | null; modalidad: string };
 
 const CULTIVO_COLOR: Record<string, string> = {
-  Soja:     'bg-[#1a3d24] text-afa',
-  Maíz:     'bg-[#2a1f00] text-ochre',
-  Trigo:    'bg-[#2a1500] text-amber-400',
-  Girasol:  'bg-[#2a2800] text-yellow-300',
-  Sorgo:    'bg-[#2a1a0a] text-orange-400',
-  Cebada:   'bg-[#1a2a10] text-green-400',
+  Soja:     'bg-[#0a2a20] text-[#22d3a0]',
+  Maíz:     'bg-[#0a1e30] text-[#38bdf8]',
+  Trigo:    'bg-[#1a1a0a] text-[#fbbf24]',
+  Girasol:  'bg-[#1a1400] text-yellow-300',
+  Sorgo:    'bg-[#1a0f0a] text-orange-400',
+  Cebada:   'bg-[#0a1a25] text-[#7dd3fc]',
 };
 
 const ESTADO_BADGE: Record<string, string> = {
@@ -78,28 +78,28 @@ export function DashboardClient({
             label: 'Productores',
             sub: 'activos en esta campaña',
             color: 'text-hi',
-            accent: '#f59e0b',
+            accent: '#38bdf8',
           },
           {
             value: totalHas > 0 ? totalHas.toLocaleString('es-AR', { maximumFractionDigits: 0 }) : '—',
             label: 'Hectáreas',
             sub: 'bajo asesoramiento',
-            color: 'text-afa',
-            accent: '#2EAA6E',
+            color: 'text-ochre',
+            accent: '#22d3a0',
           },
           {
             value: totalLotes,
             label: 'Lotes',
             sub: 'en la campaña actual',
             color: 'text-hi',
-            accent: '#6b7280',
+            accent: '#7dd3fc',
           },
           {
             value: atrasados > 0 ? atrasados : alDia,
             label: atrasados > 0 ? 'Atrasados' : 'Al día',
             sub: 'en cobranza',
-            color: atrasados > 0 ? 'text-danger' : 'text-afa',
-            accent: atrasados > 0 ? '#ef4444' : '#2EAA6E',
+            color: atrasados > 0 ? 'text-danger' : 'text-ochre',
+            accent: atrasados > 0 ? '#f87171' : '#22d3a0',
           },
         ].map(({ value, label, sub, color, accent }) => (
           <div key={label} className="card p-4 relative overflow-hidden">
@@ -142,10 +142,10 @@ export function DashboardClient({
               >
                 {/* Panal watermark */}
                 <svg
-                  className="absolute -top-1 -right-1 opacity-[0.08] w-16 h-14 pointer-events-none"
+                  className="absolute -top-1 -right-1 opacity-[0.07] w-16 h-14 pointer-events-none"
                   viewBox="0 0 60 52" aria-hidden="true"
                 >
-                  <polygon points="15,0 45,0 60,26 45,52 15,52 0,26" fill="none" stroke="#f59e0b" strokeWidth="2" />
+                  <polygon points="15,0 45,0 60,26 45,52 15,52 0,26" fill="none" stroke="#22d3a0" strokeWidth="2" />
                 </svg>
 
                 {/* Top: localidad + estado cobranza */}
