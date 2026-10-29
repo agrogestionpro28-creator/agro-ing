@@ -4,7 +4,7 @@ import { createContext, useContext } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { AppHeader } from './app-header';
 
-type Campana = { id: string; nombre: string; fecha_inicio: string; fecha_fin: string };
+type Campana   = { id: string; nombre: string; fecha_inicio: string; fecha_fin: string };
 type Ingeniero = { nombre: string; apellido: string | null; matricula: string | null; logo_url: string | null };
 
 type CampanaCtx = { campanaId: string; campana: Campana | undefined };
@@ -20,13 +20,12 @@ export function AppShell({
   campanas: Campana[];
   children: React.ReactNode;
 }) {
-  const router = useRouter();
+  const router      = useRouter();
   const searchParams = useSearchParams();
 
-  // Get campana from URL or default to first
   const campanaIdFromUrl = searchParams.get('campana');
-  const campana = campanas.find(c => c.id === campanaIdFromUrl) ?? campanas[0];
-  const campanaId = campana?.id ?? '';
+  const campana          = campanas.find(c => c.id === campanaIdFromUrl) ?? campanas[0];
+  const campanaId        = campana?.id ?? '';
 
   function handleCampanaChange(id: string) {
     const params = new URLSearchParams(searchParams.toString());
@@ -36,16 +35,25 @@ export function AppShell({
 
   return (
     <CampanaContext.Provider value={{ campanaId, campana }}>
-      <div className="min-h-screen flex flex-col">
+      {/* Layout: sidebar fija (lg+) + área de contenido */}
+      <div className="min-h-screen lg:flex">
+
+        {/* Sidebar — renderiza el AppHeader que incluye sidebar + topbar mobile */}
         <AppHeader
           ingeniero={ingeniero}
           campanas={campanas}
           campanaActivaId={campanaId}
           onCampanaChange={handleCampanaChange}
         />
-        <main className="flex-1 p-6 max-w-7xl mx-auto w-full">
-          {children}
-        </main>
+
+        {/* Área de contenido */}
+        <div className="flex-1 flex flex-col min-h-screen lg:min-h-0 overflow-hidden">
+          {/* Zona scrolleable */}
+          <main className="flex-1 overflow-y-auto bg-base">
+            {children}
+          </main>
+        </div>
+
       </div>
     </CampanaContext.Provider>
   );
