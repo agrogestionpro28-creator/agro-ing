@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect, useCallback } from 'react'
+import { useSearchParams, useRouter, usePathname } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useCampana } from '@/components/layout/app-shell'
 
@@ -53,13 +54,30 @@ export function SiembraClient({ productores, campanas }: {
 }) {
   const sb = createClient()
   const { campanaId: campanaCtxId } = useCampana()
+  const searchParams = useSearchParams()
+  const router = useRouter()
+  const pathname = usePathname()
 
-  const [campanaId, setCampanaId]           = useState(() => campanas[0]?.id ?? '')
-  const [productorId, setProductorId]       = useState(productores[0]?.id ?? '')
-  const [cultivoFiltro, setCultivoFiltro]   = useState('todos')
-  const [filas, setFilas]                   = useState<FilaLote[]>([])
-  const [cargando, setCargando]             = useState(false)
-  const [guardandoTodo, setGuardandoTodo]   = useState(false)
+  // Leer filtros desde URL para que el botón Atrás los restaure
+  const [campanaId, setCampanaIdState]     = useState(() => searchParams.get('campana') || campanas[0]?.id || '')
+  const [productorId, setProductorIdState] = useState(() => searchParams.get('productor') || productores[0]?.id || '')
+  const [cultivoFiltro, setCultivoFiltroState] = useState(() => searchParams.get('cultivo') || 'todos')
+  const [filas, setFilas]                  = useState<FilaLote[]>([])
+  const [cargando, setCargando]            = useState(false)
+  const [guardandoTodo, setGuardandoTodo]  = useState(false)
+
+  // Sincronizar filtros con URL
+  function syncUrl(campana: string, productor: string, cultivo: string) {
+    const params = new URLSearchParams()
+    if (campana) params.set('campana', campana)
+    if (productor) params.set('productor', productor)
+    if (cultivo && cultivo !== 'todos') params.set('cultivo', cultivo)
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false })
+  }
+
+  function setCampanaId(v: string) { setCampanaIdState(v); syncUrl(v, productorId, cultivoFiltro) }
+  function setProductorId(v: string) { setProductorIdState(v); syncUrl(campanaId, v, cultivoFiltro) }
+  function setCultivoFiltro(v: string) { setCultivoFiltroState(v); syncUrl(campanaId, productorId, v) }
 
   useEffect(() => {
     if (campanaCtxId && campanaCtxId !== campanaId) setCampanaId(campanaCtxId)
