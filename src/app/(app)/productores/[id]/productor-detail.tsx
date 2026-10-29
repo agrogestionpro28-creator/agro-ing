@@ -507,8 +507,8 @@ export function ProductorDetail({ productor, campanas, ingeniero }:{ productor:P
 
       {/* Modal aplicación */}
       {showAplModal && (
-        <div className="fixed inset-0 bg-black/80 z-50 flex items-start justify-center overflow-y-auto py-8 px-4">
-          <div className="w-full max-w-2xl card p-6 space-y-5" style={{borderColor:'rgba(46,170,110,0.4)'}}>
+        <div className="modal-overlay fixed inset-0 bg-black/80 z-50 flex items-start justify-center overflow-y-auto py-8 px-4">
+          <div className="modal-panel w-full max-w-2xl card p-6 space-y-5" style={{borderColor:'rgba(46,170,110,0.4)'}}>
             <div className="flex items-center justify-between">
               <h2 className="font-bold text-hi text-lg">Nueva aplicación</h2>
               <button onClick={()=>{setShowAplModal(false);setLotesSeleccionados([]);setErrApl('');}} className="text-lo hover:text-hi text-xl">✕</button>
@@ -654,8 +654,8 @@ export function ProductorDetail({ productor, campanas, ingeniero }:{ productor:P
       {msg&&<p className={cn('text-xs rounded px-3 py-2 mb-4',msg.startsWith('✓')?'text-green-400 bg-green-950 border border-green-800':'text-red-400 bg-red-950 border border-red-800')}>{msg}</p>}
 
       {confirmDelete&&(
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 px-4">
-          <div className="card p-6 max-w-sm w-full">
+        <div className="modal-overlay fixed inset-0 bg-black/80 flex items-center justify-center z-50 px-4">
+          <div className="modal-panel card p-6 max-w-sm w-full">
             <h3 className="font-bold text-hi mb-1">¿Eliminar lote?</h3>
             <p className="text-red-400 font-semibold text-sm mb-1">{confirmDelete.nombre}</p>
             <p className="text-lo text-xs mb-5">Esta acción no se puede deshacer.</p>
@@ -674,7 +674,7 @@ export function ProductorDetail({ productor, campanas, ingeniero }:{ productor:P
           </div>
         </div>
       ):(
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+        <div className="stagger-grid grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
           {lotesFiltrados.map(l=>{
             const actual=esCultivo(l.cultivo)?l.cultivo:esCultivo(l.cultivo_2)?l.cultivo_2:null;
             const esSegundoCultivo = actual === 'Soja' && esCultivo(l.cultivo) && esCultivo(l.cultivo_2) && l.cultivo !== 'Soja';

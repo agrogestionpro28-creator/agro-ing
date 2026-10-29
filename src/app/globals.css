@@ -4,6 +4,13 @@
 
 @import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,300..900;1,14..32,300..900&display=swap');
 
+/* ── Easing custom Emil-style ── */
+:root {
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
 @layer base {
   *, *::before, *::after { box-sizing: border-box; }
 
@@ -42,6 +49,14 @@
     outline: 2px solid #0ea87a66;
     outline-offset: 2px;
   }
+
+  /* Reduced motion */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
 }
 
 @layer components {
@@ -49,8 +64,8 @@
   .field {
     @apply w-full px-3 py-2 bg-white border border-base-5 rounded-lg text-hi
            placeholder:text-lo text-sm
-           focus:outline-none focus:border-ochre/60 focus:ring-2 focus:ring-ochre/15
-           transition-all duration-150;
+           focus:outline-none focus:border-ochre/60 focus:ring-2 focus:ring-ochre/15;
+    transition: border-color 150ms ease, box-shadow 150ms ease, background-color 150ms ease;
   }
   .field:hover:not(:focus) {
     @apply border-base-6;
@@ -59,21 +74,47 @@
   /* ── Buttons ── */
   .btn {
     @apply inline-flex items-center justify-center gap-2 px-4 py-2
-           rounded-lg font-semibold text-sm transition-all duration-150 select-none
+           rounded-lg font-semibold text-sm select-none
            disabled:opacity-40 disabled:cursor-not-allowed disabled:pointer-events-none;
+    transition: transform 160ms var(--ease-out),
+                background-color 150ms ease,
+                border-color 150ms ease,
+                box-shadow 150ms ease,
+                opacity 150ms ease;
+    will-change: transform;
   }
-  .btn-primary  { @apply btn bg-ochre text-white font-bold hover:bg-ochre-dark active:scale-[.98] shadow-sm shadow-ochre/20; }
-  .btn-afa      { @apply btn bg-afa text-white font-bold hover:bg-afa-dark active:scale-[.98]; }
-  .btn-ghost    { @apply btn border border-base-5 text-mid hover:border-base-6 hover:text-hi hover:bg-base-4; }
-  .btn-danger   { @apply btn bg-danger text-white hover:brightness-110 active:scale-[.98]; }
-  .btn-sm       { @apply px-3 py-1.5 text-xs rounded-md; }
+  .btn:active:not(:disabled) {
+    transform: scale(0.97);
+  }
+  .btn-primary {
+    @apply btn bg-ochre text-white font-bold hover:bg-ochre-dark shadow-sm shadow-ochre/20;
+  }
+  .btn-afa {
+    @apply btn bg-afa text-white font-bold hover:bg-afa-dark;
+  }
+  .btn-ghost {
+    @apply btn border border-base-5 text-mid hover:border-base-6 hover:text-hi hover:bg-base-4;
+  }
+  .btn-danger {
+    @apply btn bg-danger text-white hover:brightness-110;
+  }
+  .btn-sm { @apply px-3 py-1.5 text-xs rounded-md; }
 
   /* ── Card base ── */
   .card {
-    @apply bg-white border border-base-4 rounded-card shadow-sm;
+    @apply bg-white border border-base-4 rounded-card;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.03);
+    transition: box-shadow 200ms ease, border-color 200ms ease, transform 200ms var(--ease-out);
   }
   .card-elevated {
-    @apply card shadow-[0_4px_20px_rgba(0,0,0,0.08)];
+    @apply card;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.07), 0 1px 3px rgba(0,0,0,0.04);
+  }
+  /* Card hover — sólo cuando es un link/button */
+  a.card:hover,
+  button.card:hover {
+    box-shadow: 0 4px 16px rgba(0,0,0,0.09), 0 1px 4px rgba(0,0,0,0.05);
+    transform: translateY(-1px);
   }
 
   /* ── Labels ── */
@@ -119,8 +160,9 @@
   }
   .data-table td {
     @apply py-2 px-3 border-b border-base-4 text-sm text-hi;
+    transition: background-color 100ms ease;
   }
-  .data-table tbody tr:hover {
+  .data-table tbody tr:hover td {
     @apply bg-slate-50;
   }
 
@@ -144,19 +186,66 @@
   .skeleton {
     @apply bg-base-4 rounded animate-pulse;
   }
+
+  /* ── Modal overlay + panel — animación entry ── */
+  .modal-overlay {
+    animation: modal-overlay-in 180ms ease forwards;
+  }
+  .modal-panel {
+    animation: modal-panel-in 220ms var(--ease-out) forwards;
+  }
+
+  /* ── Stagger grid — cards que aparecen escalonadas ── */
+  .stagger-grid > *:nth-child(1)  { animation-delay:   0ms; }
+  .stagger-grid > *:nth-child(2)  { animation-delay:  30ms; }
+  .stagger-grid > *:nth-child(3)  { animation-delay:  60ms; }
+  .stagger-grid > *:nth-child(4)  { animation-delay:  90ms; }
+  .stagger-grid > *:nth-child(5)  { animation-delay: 120ms; }
+  .stagger-grid > *:nth-child(6)  { animation-delay: 150ms; }
+  .stagger-grid > *:nth-child(7)  { animation-delay: 180ms; }
+  .stagger-grid > *:nth-child(8)  { animation-delay: 210ms; }
+  .stagger-grid > *:nth-child(9)  { animation-delay: 240ms; }
+  .stagger-grid > *:nth-child(10) { animation-delay: 270ms; }
+  .stagger-grid > *:nth-child(n+11) { animation-delay: 300ms; }
 }
 
 /* ── Animaciones ── */
 @keyframes fade-in {
-  from { opacity: 0; transform: translateY(4px); }
+  from { opacity: 0; transform: translateY(6px); }
   to   { opacity: 1; transform: translateY(0); }
 }
 .animate-fade-in {
-  animation: fade-in 0.2s ease-out forwards;
+  animation: fade-in 220ms var(--ease-out) forwards;
+}
+
+/* Stagger card entry */
+@keyframes card-in {
+  from { opacity: 0; transform: translateY(8px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+.stagger-grid > * {
+  opacity: 0;
+  animation: card-in 250ms var(--ease-out) forwards;
+}
+
+/* Modal animations */
+@keyframes modal-overlay-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes modal-panel-in {
+  from { opacity: 0; transform: translateY(8px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 @keyframes slide-in-right {
   from { opacity: 0; transform: translateX(8px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+/* Sidebar entry */
+@keyframes sidebar-in {
+  from { opacity: 0; transform: translateX(-8px); }
   to   { opacity: 1; transform: translateX(0); }
 }
 

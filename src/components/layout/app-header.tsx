@@ -117,12 +117,16 @@ export function AppHeader({
       )}
 
       <aside className={`
-        fixed top-0 left-0 h-full z-40 flex flex-col
-        transition-transform duration-300 ease-out w-56
+        fixed top-0 left-0 h-full z-40 flex flex-col w-56
         ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
         lg:translate-x-0 lg:static lg:h-screen lg:shrink-0
       `}
-      style={{ background: '#0a0a0a', borderRight: '1px solid #1f1f1f' }}>
+      style={{
+        background: '#0a0a0a',
+        borderRight: '1px solid #1f1f1f',
+        transition: 'transform 280ms cubic-bezier(0.32, 0.72, 0, 1)',
+        willChange: 'transform',
+      }}>
 
         {/* Logo / Marca */}
         <div className="px-5 py-5" style={{ borderBottom: '1px solid #1f1f1f' }}>
@@ -211,8 +215,14 @@ export function AppHeader({
             {showMenu && (
               <>
                 <div className="fixed inset-0 z-40" onClick={() => setShowMenu(false)} />
-                <div className="absolute bottom-full left-0 mb-2 w-full rounded-xl py-1 shadow-2xl z-50 animate-fade-in"
-                  style={{ background: '#141414', border: '1px solid #2a2a2a' }}>
+                <div className="absolute bottom-full left-0 mb-2 w-full rounded-xl py-1 z-50"
+                  style={{
+                    background: '#141414',
+                    border: '1px solid #2a2a2a',
+                    boxShadow: '0 -8px 24px rgba(0,0,0,0.5), 0 -2px 8px rgba(0,0,0,0.3)',
+                    animation: 'modal-panel-in 180ms cubic-bezier(0.23, 1, 0.32, 1) forwards',
+                    transformOrigin: 'bottom center',
+                  }}>
                   <Link
                     href="/perfil"
                     onClick={() => { setShowMenu(false); setSidebarOpen(false); }}
@@ -244,10 +254,18 @@ export function AppHeader({
       <header className="lg:hidden sticky top-0 z-30 flex items-center gap-3 px-4 py-3" style={{ background: "#0a0a0a", borderBottom: "1px solid #1f1f1f" }}>
         <button
           onClick={() => setSidebarOpen(true)}
-          className="p-1.5 rounded-lg hover:bg-base-3 text-mid hover:text-hi transition-all"
+          className="p-1.5 rounded-lg"
           aria-label="Abrir menú"
+          style={{
+            color: '#9ca3af',
+            transition: 'background-color 150ms ease, color 150ms ease, transform 160ms cubic-bezier(0.23, 1, 0.32, 1)',
+          }}
+          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = '#1a1a1a'; (e.currentTarget as HTMLElement).style.color = '#ffffff'; }}
+          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; (e.currentTarget as HTMLElement).style.color = '#9ca3af'; }}
+          onMouseDown={e => { (e.currentTarget as HTMLElement).style.transform = 'scale(0.92)'; }}
+          onMouseUp={e => { (e.currentTarget as HTMLElement).style.transform = 'scale(1)'; }}
         >
-          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
           </svg>
         </button>

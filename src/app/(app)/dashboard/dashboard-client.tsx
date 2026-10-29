@@ -71,7 +71,7 @@ export function DashboardClient({
       </div>
 
       {/* ── KPIs ── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="stagger-grid grid grid-cols-2 lg:grid-cols-4 gap-3">
         {[
           {
             value: productores.length,
@@ -120,7 +120,7 @@ export function DashboardClient({
           <Link href="/productores/nuevo" className="btn-primary inline-flex">Cargar el primero</Link>
         </div>
       ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-3">
+        <div className="stagger-grid grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-3">
           {productores.map(p => {
             const has     = hasMap[p.id];
             const cob     = cobranzaMap[p.id];
