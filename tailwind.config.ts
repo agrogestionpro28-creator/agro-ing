@@ -5,46 +5,46 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        // Base con tinte azul-verde (para cards/surfaces sobre el degradé)
+        // Base clara — área de contenido principal
         base: {
-          DEFAULT: 'rgba(10,22,40,0.0)',
-          2: 'rgba(13,26,36,0.55)',
-          3: 'rgba(16,32,46,0.70)',
-          4: 'rgba(20,38,56,0.80)',
-          5: 'rgba(30,50,72,0.90)',
-          6: 'rgba(40,64,88,0.95)',
+          DEFAULT: '#f0f4f8',
+          2: '#ffffff',
+          3: '#f8fafc',
+          4: '#e8eef5',
+          5: '#d0dae6',
+          6: '#b8c8d8',
         },
         // Verde esmeralda — acento principal
         ochre: {
-          DEFAULT: '#22d3a0',
-          dark: '#16a87e',
-          light: '#5eead4',
-          muted: '#0d5c45',
-          tint: 'rgba(34,211,160,0.10)',
+          DEFAULT: '#0ea87a',
+          dark: '#0b7d5c',
+          light: '#22d3a0',
+          muted: '#d1fae5',
+          tint: 'rgba(14,168,122,0.10)',
         },
-        // Verde AFA (más intenso, compite con esmeralda — unificamos)
+        // Verde AFA
         afa: {
-          DEFAULT: '#22d3a0',
-          dark: '#16a87e',
-          light: '#5eead4',
-          tint: 'rgba(34,211,160,0.12)',
+          DEFAULT: '#0ea87a',
+          dark: '#0b7d5c',
+          light: '#22d3a0',
+          tint: 'rgba(14,168,122,0.10)',
         },
-        // Azul cielo — acento secundario
+        // Azul celeste
         sky: {
-          DEFAULT: '#38bdf8',
-          dark: '#0284c7',
-          light: '#7dd3fc',
-          tint: 'rgba(56,189,248,0.10)',
+          DEFAULT: '#0284c7',
+          dark: '#0369a1',
+          light: '#38bdf8',
+          tint: 'rgba(2,132,199,0.10)',
         },
-        // Texto
-        hi: '#f0f6ff',
-        mid: '#7a90a8',
-        lo: '#4a5c70',
-        faint: '#1a2740',
-        subtle: '#5a7288',
+        // Texto — sobre fondo claro
+        hi: '#0f172a',
+        mid: '#475569',
+        lo: '#94a3b8',
+        faint: '#e2e8f0',
+        subtle: '#64748b',
         // Estados
-        danger: '#f87171',
-        warn: '#fbbf24',
+        danger: '#dc2626',
+        warn: '#d97706',
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],

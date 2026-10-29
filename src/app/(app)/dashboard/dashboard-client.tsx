@@ -10,12 +10,12 @@ type HasRow      = { productor_id: string; campana_id: string; hectareas_total: 
 type CobranzaRow = { productor_id: string; campana_id: string; estado: string; total_cobrado: number; monto_unitario: number | null; modalidad: string };
 
 const CULTIVO_COLOR: Record<string, string> = {
-  Soja:     'bg-[#0a2a20] text-[#22d3a0]',
-  Maíz:     'bg-[#0a1e30] text-[#38bdf8]',
-  Trigo:    'bg-[#1a1a0a] text-[#fbbf24]',
-  Girasol:  'bg-[#1a1400] text-yellow-300',
-  Sorgo:    'bg-[#1a0f0a] text-orange-400',
-  Cebada:   'bg-[#0a1a25] text-[#7dd3fc]',
+  Soja:     'bg-emerald-100 text-emerald-700',
+  Maíz:     'bg-sky-100 text-sky-700',
+  Trigo:    'bg-amber-100 text-amber-700',
+  Girasol:  'bg-yellow-100 text-yellow-700',
+  Sorgo:    'bg-orange-100 text-orange-700',
+  Cebada:   'bg-teal-100 text-teal-700',
 };
 
 const ESTADO_BADGE: Record<string, string> = {
@@ -77,29 +77,29 @@ export function DashboardClient({
             value: productores.length,
             label: 'Productores',
             sub: 'activos en esta campaña',
-            color: 'text-hi',
-            accent: '#38bdf8',
+            color: 'text-sky-600',
+            accent: '#0284c7',
           },
           {
             value: totalHas > 0 ? totalHas.toLocaleString('es-AR', { maximumFractionDigits: 0 }) : '—',
             label: 'Hectáreas',
             sub: 'bajo asesoramiento',
-            color: 'text-ochre',
-            accent: '#22d3a0',
+            color: 'text-emerald-600',
+            accent: '#0ea87a',
           },
           {
             value: totalLotes,
             label: 'Lotes',
             sub: 'en la campaña actual',
-            color: 'text-hi',
-            accent: '#7dd3fc',
+            color: 'text-slate-700',
+            accent: '#64748b',
           },
           {
             value: atrasados > 0 ? atrasados : alDia,
             label: atrasados > 0 ? 'Atrasados' : 'Al día',
             sub: 'en cobranza',
-            color: atrasados > 0 ? 'text-danger' : 'text-ochre',
-            accent: atrasados > 0 ? '#f87171' : '#22d3a0',
+            color: atrasados > 0 ? 'text-red-600' : 'text-emerald-600',
+            accent: atrasados > 0 ? '#dc2626' : '#0ea87a',
           },
         ].map(({ value, label, sub, color, accent }) => (
           <div key={label} className="card p-4 relative overflow-hidden">
@@ -137,7 +137,7 @@ export function DashboardClient({
                 className={cn(
                   'card aspect-square p-3.5 flex flex-col justify-between',
                   'relative overflow-hidden group',
-                  'hover:border-ochre/60 hover:bg-base-3 transition-all duration-150 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-black/30'
+                  'hover:border-emerald-300 hover:shadow-md transition-all duration-150 hover:-translate-y-0.5'
                 )}
               >
                 {/* Panal watermark */}
@@ -159,14 +159,14 @@ export function DashboardClient({
                 </div>
 
                 {/* Nombre */}
-                <div className="text-hi font-bold text-sm leading-tight line-clamp-2">
+                <div className="text-slate-800 font-bold text-sm leading-tight line-clamp-2">
                   {p.razon_social}
                 </div>
 
                 {/* Bottom: ha + cultivos */}
                 <div>
                   <div className="flex items-baseline gap-1">
-                    <span className="text-afa font-black text-2xl leading-none tabular-nums">
+                    <span className="text-emerald-600 font-black text-2xl leading-none tabular-nums">
                       {has ? Math.round(Number(has.hectareas_total)) : '—'}
                     </span>
                     <span className="text-lo text-[10px]">ha</span>
@@ -195,8 +195,8 @@ export function DashboardClient({
           <Link
             href="/productores/nuevo"
             className="card aspect-square flex items-center justify-center
-                       border-dashed hover:border-ochre/50 hover:bg-base-3
-                       text-lo hover:text-ochre transition-all group"
+                       border-dashed border-slate-300 hover:border-emerald-400 hover:bg-emerald-50
+                       text-slate-400 hover:text-emerald-600 transition-all group"
           >
             <div className="text-center">
               <div className="text-3xl font-thin mb-1 group-hover:scale-110 transition-transform">+</div>

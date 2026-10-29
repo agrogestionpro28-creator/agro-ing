@@ -49,7 +49,7 @@ export function AppShell({
         {/* Área de contenido */}
         <div className="flex-1 flex flex-col min-h-screen lg:min-h-0 overflow-hidden">
           {/* Zona scrolleable */}
-          <main className="flex-1 overflow-y-auto bg-base">
+          <main className="flex-1 overflow-y-auto bg-[#f0f4f8]">
             {children}
           </main>
         </div>

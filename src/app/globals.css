@@ -13,34 +13,33 @@
   }
 
   body {
-    background: linear-gradient(135deg, #0a1628 0%, #0d2a1e 40%, #0a1f30 70%, #111827 100%);
-    background-attachment: fixed;
-    color: #f0f6ff;
+    background: #f0f4f8;
+    color: #1a2332;
     font-family: 'Inter', system-ui, sans-serif;
     min-height: 100vh;
     font-feature-settings: 'cv11', 'ss01';
   }
 
-  ::selection { background: #22d3a055; color: #fff; }
+  ::selection { background: #0ea87a33; color: #0f172a; }
 
   /* Scrollbar */
   ::-webkit-scrollbar { width: 5px; height: 5px; }
   ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { background: #1a2332; border-radius: 9px; }
-  ::-webkit-scrollbar-thumb:hover { background: #22d3a055; }
+  ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 9px; }
+  ::-webkit-scrollbar-thumb:hover { background: #0ea87a66; }
 
-  /* Inputs & selects — forzar modo oscuro */
+  /* Inputs & selects — modo claro */
   input, select, textarea {
-    color-scheme: dark;
+    color-scheme: light;
   }
   select, select option {
-    background-color: #0d1117;
-    color: #f0f6ff;
+    background-color: #ffffff;
+    color: #0f172a;
   }
 
   /* Focus rings coherentes */
   :focus-visible {
-    outline: 2px solid #22d3a055;
+    outline: 2px solid #0ea87a66;
     outline-offset: 2px;
   }
 }
@@ -48,7 +47,7 @@
 @layer components {
   /* ── Inputs / Selects ── */
   .field {
-    @apply w-full px-3 py-2 bg-base-3 border border-base-5 rounded-lg text-hi
+    @apply w-full px-3 py-2 bg-white border border-base-5 rounded-lg text-hi
            placeholder:text-lo text-sm
            focus:outline-none focus:border-ochre/60 focus:ring-2 focus:ring-ochre/15
            transition-all duration-150;
@@ -63,21 +62,18 @@
            rounded-lg font-semibold text-sm transition-all duration-150 select-none
            disabled:opacity-40 disabled:cursor-not-allowed disabled:pointer-events-none;
   }
-  .btn-primary  { @apply btn bg-ochre text-[#080c10] font-bold hover:brightness-110 active:scale-[.98] shadow-sm shadow-ochre/20; }
-  .btn-afa      { @apply btn bg-afa text-[#080c10] font-bold hover:brightness-110 active:scale-[.98]; }
-  .btn-ghost    { @apply btn border border-base-5 text-mid hover:border-base-6 hover:text-hi hover:bg-base-3; }
+  .btn-primary  { @apply btn bg-ochre text-white font-bold hover:bg-ochre-dark active:scale-[.98] shadow-sm shadow-ochre/20; }
+  .btn-afa      { @apply btn bg-afa text-white font-bold hover:bg-afa-dark active:scale-[.98]; }
+  .btn-ghost    { @apply btn border border-base-5 text-mid hover:border-base-6 hover:text-hi hover:bg-base-4; }
   .btn-danger   { @apply btn bg-danger text-white hover:brightness-110 active:scale-[.98]; }
   .btn-sm       { @apply px-3 py-1.5 text-xs rounded-md; }
 
   /* ── Card base ── */
   .card {
-    @apply bg-base-2 border border-base-4 rounded-card;
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border-color: rgba(34, 211, 160, 0.12);
+    @apply bg-white border border-base-4 rounded-card shadow-sm;
   }
   .card-elevated {
-    @apply card shadow-[0_4px_32px_rgba(0,0,0,0.35)];
+    @apply card shadow-[0_4px_20px_rgba(0,0,0,0.08)];
   }
 
   /* ── Labels ── */
@@ -85,7 +81,7 @@
     @apply text-[10px] font-bold tracking-[0.14em] uppercase;
   }
   .eyebrow {
-    @apply text-[10px] font-bold tracking-[0.16em] uppercase text-ochre;
+    @apply text-[10px] font-bold tracking-[0.16em] uppercase text-ochre-dark;
   }
 
   /* ── Filter bar ── */
@@ -119,13 +115,13 @@
   }
   .data-table th {
     @apply text-left py-2.5 px-3 text-[10px] font-bold uppercase tracking-wider text-mid
-           border-b border-base-5 bg-base-2;
+           border-b border-base-5 bg-slate-50;
   }
   .data-table td {
-    @apply py-2 px-3 border-b border-base-4/50 text-sm;
+    @apply py-2 px-3 border-b border-base-4 text-sm text-hi;
   }
   .data-table tbody tr:hover {
-    @apply bg-base-3/50;
+    @apply bg-slate-50;
   }
 
   /* ── Badge tipos ── */
@@ -133,11 +129,11 @@
     @apply inline-flex items-center gap-1 text-[10px] font-bold tracking-wider
            px-2 py-0.5 rounded-full;
   }
-  .badge-al-dia    { @apply badge bg-afa/15 text-afa border border-afa/20; }
-  .badge-parcial   { @apply badge bg-ochre/15 text-ochre border border-ochre/20; }
-  .badge-atrasado  { @apply badge bg-red-500/15 text-danger border border-red-500/20; }
-  .badge-sin-conf  { @apply badge bg-base-4 text-lo border border-base-5; }
-  .badge-pending   { @apply badge bg-red-500/10 text-red-400 border border-red-500/20; }
+  .badge-al-dia    { @apply badge bg-emerald-50 text-emerald-700 border border-emerald-200; }
+  .badge-parcial   { @apply badge bg-amber-50 text-amber-700 border border-amber-200; }
+  .badge-atrasado  { @apply badge bg-red-50 text-red-600 border border-red-200; }
+  .badge-sin-conf  { @apply badge bg-slate-100 text-slate-500 border border-slate-200; }
+  .badge-pending   { @apply badge bg-red-50 text-red-500 border border-red-200; }
 
   /* ── Honeycomb bg ── */
   .honeycomb-bg {
