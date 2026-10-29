@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { useSearchParams, useRouter, usePathname } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useCampana } from '@/components/layout/app-shell'
@@ -12,20 +12,15 @@ type FilaLote = {
   nombre: string
   hectareas: number
   cultivo: string
-  // campos editables en lotes
   variedad: string
   fecha_siembra: string
-  // fertilización de siembra (tabla fertilizaciones, momento='siembra')
   ferti_id: string | null
   ferti_productos: string
   ferti_fecha: string
-  // estado guardado
   sucio: boolean
   guardando: boolean
   ok: boolean
 }
-
-const CULTIVOS = ['Soja 1°','Soja 2°','Maíz','Trigo','Cebada','Sorgo','Girasol','Otro']
 
 function cultColor(c: string) {
   const s = (c ?? '').toLowerCase()
@@ -58,15 +53,13 @@ export function SiembraClient({ productores, campanas }: {
   const router = useRouter()
   const pathname = usePathname()
 
-  // Leer filtros desde URL para que el botón Atrás los restaure
-  const [campanaId, setCampanaIdState]     = useState(() => searchParams.get('campana') || campanas[0]?.id || '')
-  const [productorId, setProductorIdState] = useState(() => searchParams.get('productor') || productores[0]?.id || '')
+  const [campanaId, setCampanaIdState]         = useState(() => searchParams.get('campana') || campanas[0]?.id || '')
+  const [productorId, setProductorIdState]     = useState(() => searchParams.get('productor') || productores[0]?.id || '')
   const [cultivoFiltro, setCultivoFiltroState] = useState(() => searchParams.get('cultivo') || 'todos')
-  const [filas, setFilas]                  = useState<FilaLote[]>([])
-  const [cargando, setCargando]            = useState(false)
-  const [guardandoTodo, setGuardandoTodo]  = useState(false)
+  const [filas, setFilas]                      = useState<FilaLote[]>([])
+  const [cargando, setCargando]                = useState(false)
+  const [guardandoTodo, setGuardandoTodo]      = useState(false)
 
-  // Sincronizar filtros con URL
   function syncUrl(campana: string, productor: string, cultivo: string) {
     const params = new URLSearchParams()
     if (campana) params.set('campana', campana)
@@ -75,8 +68,8 @@ export function SiembraClient({ productores, campanas }: {
     router.replace(`${pathname}?${params.toString()}`, { scroll: false })
   }
 
-  function setCampanaId(v: string) { setCampanaIdState(v); syncUrl(v, productorId, cultivoFiltro) }
-  function setProductorId(v: string) { setProductorIdState(v); syncUrl(campanaId, v, cultivoFiltro) }
+  function setCampanaId(v: string)     { setCampanaIdState(v);     syncUrl(v, productorId, cultivoFiltro) }
+  function setProductorId(v: string)   { setProductorIdState(v);   syncUrl(campanaId, v, cultivoFiltro) }
   function setCultivoFiltro(v: string) { setCultivoFiltroState(v); syncUrl(campanaId, productorId, v) }
 
   useEffect(() => {
@@ -90,7 +83,6 @@ export function SiembraClient({ productores, campanas }: {
   async function cargar() {
     setCargando(true)
     try {
-      // Lotes del productor en esta campaña
       const { data: lotes } = await (sb as any)
         .from('lotes')
         .select('id, nombre, hectareas, cultivo, variedad, fecha_siembra')
@@ -101,8 +93,6 @@ export function SiembraClient({ productores, campanas }: {
       if (!lotes || lotes.length === 0) { setFilas([]); return }
 
       const loteIds = lotes.map((l: any) => l.id)
-
-      // Fertilizaciones de siembra de esos lotes
       const { data: fertis } = await (sb as any)
         .from('fertilizaciones')
         .select('id, lote_id, fecha, productos')
@@ -110,7 +100,6 @@ export function SiembraClient({ productores, campanas }: {
         .eq('momento', 'siembra')
         .order('fecha', { ascending: false })
 
-      // Mapa lote → primera ferti de siembra
       const fertiMap: Record<string, any> = {}
       ;(fertis ?? []).forEach((f: any) => {
         if (!fertiMap[f.lote_id]) fertiMap[f.lote_id] = f
@@ -135,37 +124,29 @@ export function SiembraClient({ productores, campanas }: {
     }
   }
 
-  // Actualizar campo de una fila
   function setFila(loteId: string, campo: Partial<FilaLote>) {
     setFilas(fs => fs.map(f =>
       f.lote_id === loteId ? { ...f, ...campo, sucio: true, ok: false } : f
     ))
   }
 
-  // Guardar una fila individual
   async function guardarFila(loteId: string) {
     const fila = filas.find(f => f.lote_id === loteId)
     if (!fila) return
-
     setFilas(fs => fs.map(f => f.lote_id === loteId ? { ...f, guardando: true } : f))
-
     try {
-      // 1. Actualizar lote
       await (sb as any).from('lotes').update({
         variedad: fila.variedad || null,
         fecha_siembra: fila.fecha_siembra || null,
       }).eq('id', loteId)
 
-      // 2. Fertilización de siembra
       if (fila.ferti_productos.trim()) {
         if (fila.ferti_id) {
-          // Actualizar existente
           await (sb as any).from('fertilizaciones').update({
             productos: fila.ferti_productos.trim(),
             fecha: fila.ferti_fecha || fila.fecha_siembra || new Date().toISOString().slice(0, 10),
           }).eq('id', fila.ferti_id)
         } else {
-          // Insertar nueva
           const { data: nuevo } = await (sb as any).from('fertilizaciones').insert({
             lote_id: loteId,
             momento: 'siembra',
@@ -177,7 +158,6 @@ export function SiembraClient({ productores, campanas }: {
           }
         }
       } else if (fila.ferti_id) {
-        // Borrar si quedó vacío
         await (sb as any).from('fertilizaciones').delete().eq('id', fila.ferti_id)
         setFilas(fs => fs.map(f => f.lote_id === loteId ? { ...f, ferti_id: null } : f))
       }
@@ -185,133 +165,167 @@ export function SiembraClient({ productores, campanas }: {
       setFilas(fs => fs.map(f =>
         f.lote_id === loteId ? { ...f, guardando: false, sucio: false, ok: true } : f
       ))
-      // Quitar ✓ después de 2s
       setTimeout(() => setFilas(fs => fs.map(f =>
         f.lote_id === loteId ? { ...f, ok: false } : f
       )), 2000)
-
     } catch {
       setFilas(fs => fs.map(f => f.lote_id === loteId ? { ...f, guardando: false } : f))
     }
   }
 
-  // Guardar todos los que están sucios
   async function guardarTodo() {
     setGuardandoTodo(true)
-    const sucios = filas.filter(f => f.sucio)
-    await Promise.all(sucios.map(f => guardarFila(f.lote_id)))
+    await Promise.all(filas.filter(f => f.sucio).map(f => guardarFila(f.lote_id)))
     setGuardandoTodo(false)
   }
 
   const cultivosUnicos = [...new Set(filas.map(f => f.cultivo).filter(Boolean))].sort()
   const filasFiltradas = cultivoFiltro === 'todos' ? filas : filas.filter(f => f.cultivo === cultivoFiltro)
-
-  const haysucios = filas.some(f => f.sucio)
-  const completos = filasFiltradas.filter(f => f.fecha_siembra && f.variedad).length
-  const sinDatos  = filasFiltradas.filter(f => !f.fecha_siembra && !f.variedad).length
+  const haysucios  = filas.some(f => f.sucio)
+  const completos  = filasFiltradas.filter(f => f.fecha_siembra && f.variedad).length
+  const sinDatos   = filasFiltradas.filter(f => !f.fecha_siembra && !f.variedad).length
+  const productorActual = productores.find(p => p.id === productorId)
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-6 space-y-5">
+    <div className="max-w-6xl mx-auto px-4 py-6 space-y-4 animate-fade-in">
 
       {/* Header */}
       <div className="flex items-start justify-between flex-wrap gap-3">
         <div>
-          <p className="label-xs text-ochre">SIEMBRA</p>
-          <h1 className="text-2xl font-black text-hi">Carga de siembra</h1>
-          <p className="text-mid text-sm">Fecha · Variedad/Híbrido · Fertilización de arranque</p>
+          <p className="eyebrow mb-0.5">Siembra</p>
+          <h1 className="text-2xl font-black text-hi tracking-tight">Carga de Siembra</h1>
+          <p className="text-lo text-sm mt-0.5">Fecha · Variedad o Híbrido · Fertilización de arranque</p>
         </div>
         {haysucios && (
           <button
             onClick={guardarTodo}
             disabled={guardandoTodo}
-            className="btn-primary text-sm px-5"
+            className="btn-primary"
           >
-            {guardandoTodo ? 'Guardando...' : `💾 Guardar todo (${filas.filter(f => f.sucio).length})`}
+            {guardandoTodo
+              ? <><span className="animate-spin inline-block">⏳</span> Guardando...</>
+              : <>💾 Guardar todo <span className="bg-white/20 rounded px-1.5 py-0.5 text-[10px] font-black">{filas.filter(f => f.sucio).length}</span></>
+            }
           </button>
         )}
       </div>
 
       {/* Filtros */}
-      <div className="card p-3 flex flex-wrap gap-3 items-end">
-        <div>
-          <label className="label-xs text-hi font-bold block mb-1">CAMPAÑA</label>
-          <select value={campanaId} onChange={e => setCampanaId(e.target.value)} className="field text-sm">
+      <div className="bg-[#111] border border-base-4 rounded-xl p-3 flex flex-wrap gap-3 items-end">
+        <div className="filter-group">
+          <label className="filter-label">Campaña</label>
+          <select value={campanaId} onChange={e => setCampanaId(e.target.value)} className="field py-1.5 text-sm min-w-[130px]">
             {campanas.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
           </select>
         </div>
-        <div>
-          <label className="label-xs text-hi font-bold block mb-1">PRODUCTOR</label>
-          <select value={productorId} onChange={e => setProductorId(e.target.value)} className="field text-sm">
+        <div className="filter-group">
+          <label className="filter-label">Productor</label>
+          <select value={productorId} onChange={e => setProductorId(e.target.value)} className="field py-1.5 text-sm min-w-[180px]">
             {productores.map(p => <option key={p.id} value={p.id}>{p.razon_social}</option>)}
           </select>
         </div>
-        <div>
-          <label className="label-xs text-hi font-bold block mb-1">CULTIVO</label>
-          <select value={cultivoFiltro} onChange={e => setCultivoFiltro(e.target.value)} className="field text-sm">
-            <option value="todos">Todos</option>
-            {cultivosUnicos.map(c => <option key={c} value={c}>{c}</option>)}
-          </select>
-        </div>
+        {cultivosUnicos.length > 1 && (
+          <div className="filter-group">
+            <label className="filter-label">Cultivo</label>
+            <select value={cultivoFiltro} onChange={e => setCultivoFiltro(e.target.value)} className="field py-1.5 text-sm min-w-[130px]">
+              <option value="todos">Todos</option>
+              {cultivosUnicos.map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
+          </div>
+        )}
 
-        {/* Stats */}
+        {/* Stats inline */}
         {!cargando && filasFiltradas.length > 0 && (
-          <div className="ml-auto flex gap-4 text-right">
-            <div>
-              <p className="text-hi font-black text-lg">{filasFiltradas.length}</p>
-              <p className="text-lo text-xs">lotes</p>
+          <div className="ml-auto flex items-center gap-4">
+            <div className="text-center">
+              <p className="text-hi font-black text-xl tabular-nums leading-none">{filasFiltradas.length}</p>
+              <p className="text-lo text-[10px] uppercase tracking-wide">lotes</p>
             </div>
-            <div>
-              <p className="text-green-400 font-black text-lg">{completos}</p>
-              <p className="text-lo text-xs">completos</p>
+            <div className="w-px h-8 bg-base-5" />
+            <div className="text-center">
+              <p className="text-afa font-black text-xl tabular-nums leading-none">{completos}</p>
+              <p className="text-lo text-[10px] uppercase tracking-wide">completos</p>
             </div>
             {sinDatos > 0 && (
-              <div>
-                <p className="text-red-400 font-black text-lg">{sinDatos}</p>
-                <p className="text-lo text-xs">sin datos</p>
-              </div>
+              <>
+                <div className="w-px h-8 bg-base-5" />
+                <div className="text-center">
+                  <p className="text-red-400 font-black text-xl tabular-nums leading-none">{sinDatos}</p>
+                  <p className="text-lo text-[10px] uppercase tracking-wide">pendientes</p>
+                </div>
+              </>
             )}
           </div>
         )}
       </div>
 
+      {/* Progreso visual si hay datos */}
+      {!cargando && filasFiltradas.length > 0 && (
+        <div className="h-1.5 bg-base-4 rounded-full overflow-hidden">
+          <div
+            className="h-full bg-gradient-to-r from-afa to-green-400 rounded-full transition-all duration-500"
+            style={{ width: `${filasFiltradas.length ? (completos / filasFiltradas.length) * 100 : 0}%` }}
+          />
+        </div>
+      )}
+
+      {/* Estado carga */}
       {cargando && (
-        <div className="card p-10 text-center text-mid">Cargando lotes...</div>
+        <div className="card p-12 text-center space-y-2">
+          <div className="text-3xl animate-pulse">🌱</div>
+          <p className="text-lo text-sm">Cargando lotes...</p>
+        </div>
       )}
 
       {!cargando && filasFiltradas.length === 0 && (
-        <div className="card p-10 text-center text-mid">
-          <p className="text-3xl mb-2">🌱</p>
-          <p className="font-bold text-hi">Sin lotes para este productor en esta campaña</p>
+        <div className="card p-12 text-center space-y-2">
+          <p className="text-4xl">🌾</p>
+          <p className="font-bold text-hi">Sin lotes para este productor</p>
+          <p className="text-lo text-sm">Seleccioná otro productor o campaña</p>
         </div>
       )}
 
       {/* PLANILLA */}
       {!cargando && filasFiltradas.length > 0 && (
         <div className="card overflow-x-auto">
-          <table className="w-full border-collapse min-w-[700px]">
+          <table className="w-full border-collapse min-w-[680px]">
             <thead>
-              <tr className="border-b-2 border-base-5">
-                <th className="text-left py-2.5 px-3 text-hi text-[11px] font-bold uppercase tracking-wider w-[160px]">Lote</th>
-                <th className="text-center py-2.5 px-2 text-hi text-[11px] font-bold uppercase tracking-wider w-10">Ha</th>
-                <th className="text-left py-2.5 px-3 text-hi text-[11px] font-bold uppercase tracking-wider w-[130px]">F. Siembra</th>
-                <th className="text-left py-2.5 px-3 text-hi text-[11px] font-bold uppercase tracking-wider">Variedad / Híbrido</th>
-                <th className="text-left py-2.5 px-3 text-hi text-[11px] font-bold uppercase tracking-wider">Fertilización arranque</th>
-                <th className="w-16"></th>
+              <tr className="border-b border-base-5">
+                <th className="text-left py-3 px-4 text-[10px] font-bold uppercase tracking-wider text-mid bg-[#0f0f0f] w-[170px]">
+                  Lote
+                </th>
+                <th className="text-center py-3 px-2 text-[10px] font-bold uppercase tracking-wider text-mid bg-[#0f0f0f] w-12">
+                  Ha
+                </th>
+                <th className="text-left py-3 px-3 text-[10px] font-bold uppercase tracking-wider text-mid bg-[#0f0f0f] w-[140px]">
+                  Fecha siembra
+                </th>
+                <th className="text-left py-3 px-3 text-[10px] font-bold uppercase tracking-wider text-mid bg-[#0f0f0f]">
+                  Variedad / Híbrido
+                </th>
+                <th className="text-left py-3 px-3 text-[10px] font-bold uppercase tracking-wider text-mid bg-[#0f0f0f]">
+                  Fertilización arranque
+                </th>
+                <th className="bg-[#0f0f0f] w-20" />
               </tr>
             </thead>
-            <tbody>
-              {filasFiltradas.map((fila, li) => {
+            <tbody className="divide-y divide-base-4/40">
+              {filasFiltradas.map((fila) => {
                 const cc = cultColor(fila.cultivo)
-                const rowBg = li % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.02)'
                 const tieneData = fila.fecha_siembra || fila.variedad
+
                 return (
                   <tr
                     key={fila.lote_id}
-                    className="border-b border-base-5/30 group"
-                    style={{ background: rowBg }}
+                    className={`
+                      group transition-colors
+                      ${fila.ok ? 'bg-afa/5' : ''}
+                      ${fila.sucio && !fila.ok ? 'bg-ochre/4' : ''}
+                      hover:bg-base-3/40
+                    `}
                   >
                     {/* Lote */}
-                    <td className="py-2 px-3">
+                    <td className="py-2 px-4">
                       <div className="flex items-center gap-2">
                         <span
                           className="text-[9px] font-black px-1.5 py-0.5 rounded shrink-0"
@@ -320,16 +334,18 @@ export function SiembraClient({ productores, campanas }: {
                           {cultAbrev(fila.cultivo)}
                         </span>
                         <div>
-                          <p className="text-hi font-bold text-xs leading-tight">{fila.nombre}</p>
+                          <p className="text-hi font-semibold text-xs leading-tight">{fila.nombre}</p>
                           {!tieneData && (
-                            <p className="text-[9px] text-red-400 font-semibold">sin datos</p>
+                            <p className="text-[9px] text-red-400 font-bold">sin datos</p>
                           )}
                         </div>
                       </div>
                     </td>
 
                     {/* Ha */}
-                    <td className="text-center py-2 px-2 text-lo text-xs">{fila.hectareas}</td>
+                    <td className="text-center py-2 px-2 text-mid text-xs font-mono">
+                      {fila.hectareas}
+                    </td>
 
                     {/* Fecha siembra */}
                     <td className="py-1.5 px-2">
@@ -337,8 +353,8 @@ export function SiembraClient({ productores, campanas }: {
                         type="date"
                         value={fila.fecha_siembra}
                         onChange={e => setFila(fila.lote_id, { fecha_siembra: e.target.value })}
-                        className="field text-xs w-full"
-                        style={{ minWidth: '120px' }}
+                        className="field py-1.5 text-xs"
+                        style={{ minWidth: '128px' }}
                       />
                     </td>
 
@@ -349,7 +365,7 @@ export function SiembraClient({ productores, campanas }: {
                         value={fila.variedad}
                         onChange={e => setFila(fila.lote_id, { variedad: e.target.value })}
                         placeholder="Ej: DM 4670, NK Iudex..."
-                        className="field text-xs w-full"
+                        className="field py-1.5 text-xs"
                       />
                     </td>
 
@@ -360,25 +376,27 @@ export function SiembraClient({ productores, campanas }: {
                         value={fila.ferti_productos}
                         onChange={e => setFila(fila.lote_id, { ferti_productos: e.target.value })}
                         placeholder="Ej: 100 kg MAP + 50 kg Urea"
-                        className="field text-xs w-full"
+                        className="field py-1.5 text-xs"
                       />
                     </td>
 
-                    {/* Acción */}
-                    <td className="py-1.5 px-2 text-center">
+                    {/* Estado / Acción */}
+                    <td className="py-1.5 px-3 text-center">
                       {fila.guardando ? (
-                        <span className="text-lo text-xs">⏳</span>
+                        <span className="text-lo text-xs animate-pulse">guardando</span>
                       ) : fila.ok ? (
-                        <span className="text-green-400 text-sm font-black">✓</span>
+                        <span className="inline-flex items-center gap-1 text-afa text-xs font-bold">
+                          <span className="text-sm">✓</span> Guardado
+                        </span>
                       ) : fila.sucio ? (
                         <button
                           onClick={() => guardarFila(fila.lote_id)}
-                          className="text-[11px] font-bold text-ochre hover:text-hi transition-colors px-2 py-1 rounded hover:bg-base-4"
+                          className="text-xs font-bold text-ochre hover:text-hi bg-ochre/10 hover:bg-ochre/20 px-2.5 py-1 rounded-lg transition-all"
                         >
                           Guardar
                         </button>
                       ) : (
-                        <span className="text-base-5 text-xs opacity-0 group-hover:opacity-100">·</span>
+                        <span className="text-base-5 text-xs opacity-0 group-hover:opacity-40 transition-opacity">—</span>
                       )}
                     </td>
                   </tr>
@@ -389,15 +407,18 @@ export function SiembraClient({ productores, campanas }: {
         </div>
       )}
 
-      {/* Botón guardar todo al pie si hay cambios */}
-      {haysucios && filas.length > 3 && (
+      {/* Guardar todo al pie */}
+      {haysucios && filasFiltradas.length > 4 && (
         <div className="flex justify-end">
           <button
             onClick={guardarTodo}
             disabled={guardandoTodo}
-            className="btn-primary text-sm px-5"
+            className="btn-primary"
           >
-            {guardandoTodo ? 'Guardando...' : `💾 Guardar todo (${filas.filter(f => f.sucio).length})`}
+            {guardandoTodo
+              ? 'Guardando...'
+              : `💾 Guardar todo (${filas.filter(f => f.sucio).length} cambios)`
+            }
           </button>
         </div>
       )}

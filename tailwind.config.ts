@@ -30,10 +30,11 @@ const config: Config = {
           tint: 'rgba(46,170,110,0.12)',
         },
         // Texto
-        hi: '#f5f5f5',
-        mid: '#a3a3a3',
-        lo: '#525252',
-        faint: '#2a2a2a',
+        hi: '#f0f0f0',
+        mid: '#888888',
+        lo: '#555555',
+        faint: '#3a3a3a',
+        subtle: '#6b7280',
         // Estados
         danger: '#ef4444',
         warn: '#f59e0b',
