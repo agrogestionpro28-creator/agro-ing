@@ -393,20 +393,22 @@ export function ProductorDetail({ productor, campanas, ingeniero }:{ productor:P
     ctx.textAlign = 'left';
   }
 
-  // Crop styles for lot cards
-  const CROP_STYLES: Record<string,{cardStyle:string;numColor:string;badgeStyle:string}> = {
-    // Soja 1° — verde brillante
-    'Soja':    {cardStyle:'bg-green-950 border-green-500 shadow-[0_0_18px_rgba(34,197,94,0.4)]',    numColor:'text-green-400',  badgeStyle:'bg-green-900 text-green-400 border border-green-500'},
-    // Soja 2° — verde oscuro tenue (viene después del trigo/cebada)
-    'Soja 2°': {cardStyle:'bg-emerald-950 border-emerald-700 shadow-[0_0_12px_rgba(16,185,129,0.25)]', numColor:'text-emerald-600', badgeStyle:'bg-emerald-950 text-emerald-500 border border-emerald-700'},
-    'Maíz':    {cardStyle:'bg-lime-950  border-lime-500  shadow-[0_0_18px_rgba(132,204,22,0.4)]',   numColor:'text-lime-400',   badgeStyle:'bg-lime-900 text-lime-400 border border-lime-500'},
-    'Trigo':   {cardStyle:'bg-amber-950 border-amber-500 shadow-[0_0_18px_rgba(245,158,11,0.4)]',   numColor:'text-amber-400',  badgeStyle:'bg-amber-900 text-amber-400 border border-amber-500'},
-    'Cebada':  {cardStyle:'bg-yellow-950 border-yellow-500 shadow-[0_0_18px_rgba(234,179,8,0.4)]',  numColor:'text-yellow-400', badgeStyle:'bg-yellow-900 text-yellow-400 border border-yellow-500'},
-    'Sorgo':   {cardStyle:'bg-orange-950 border-orange-700 shadow-[0_0_18px_rgba(194,65,12,0.4)]',  numColor:'text-orange-600', badgeStyle:'bg-orange-950 text-orange-500 border border-orange-700'},
-    'Girasol': {cardStyle:'bg-sky-950   border-sky-400   shadow-[0_0_18px_rgba(56,189,248,0.4)]',   numColor:'text-sky-400',    badgeStyle:'bg-sky-900 text-sky-400 border border-sky-400'},
-    'Alfalfa': {cardStyle:'bg-teal-950  border-teal-500  shadow-[0_0_18px_rgba(20,184,166,0.4)]',   numColor:'text-teal-400',   badgeStyle:'bg-teal-900 text-teal-400 border border-teal-500'},
+  // Crop styles for lot cards — fondo claro, acento de color por cultivo
+  const CROP_STYLES: Record<string,{
+    borderColor:string; accentColor:string; numColor:string;
+    badgeBg:string; badgeText:string; badgeBorder:string;
+    stripColor:string; lightBg:string;
+  }> = {
+    'Soja':    { borderColor:'#16a34a', accentColor:'#16a34a', numColor:'#15803d',  badgeBg:'#f0fdf4', badgeText:'#15803d', badgeBorder:'#bbf7d0', stripColor:'#22c55e', lightBg:'#f0fdf4' },
+    'Soja 2°': { borderColor:'#059669', accentColor:'#059669', numColor:'#047857',  badgeBg:'#ecfdf5', badgeText:'#047857', badgeBorder:'#a7f3d0', stripColor:'#34d399', lightBg:'#ecfdf5' },
+    'Maíz':    { borderColor:'#ca8a04', accentColor:'#ca8a04', numColor:'#a16207',  badgeBg:'#fefce8', badgeText:'#a16207', badgeBorder:'#fde68a', stripColor:'#facc15', lightBg:'#fefce8' },
+    'Trigo':   { borderColor:'#d97706', accentColor:'#d97706', numColor:'#b45309',  badgeBg:'#fffbeb', badgeText:'#b45309', badgeBorder:'#fcd34d', stripColor:'#f59e0b', lightBg:'#fffbeb' },
+    'Cebada':  { borderColor:'#b45309', accentColor:'#b45309', numColor:'#92400e',  badgeBg:'#fef3c7', badgeText:'#92400e', badgeBorder:'#fde68a', stripColor:'#fbbf24', lightBg:'#fef3c7' },
+    'Sorgo':   { borderColor:'#ea580c', accentColor:'#ea580c', numColor:'#c2410c',  badgeBg:'#fff7ed', badgeText:'#c2410c', badgeBorder:'#fed7aa', stripColor:'#f97316', lightBg:'#fff7ed' },
+    'Girasol': { borderColor:'#0284c7', accentColor:'#0284c7', numColor:'#0369a1',  badgeBg:'#f0f9ff', badgeText:'#0369a1', badgeBorder:'#bae6fd', stripColor:'#38bdf8', lightBg:'#f0f9ff' },
+    'Alfalfa': { borderColor:'#0d9488', accentColor:'#0d9488', numColor:'#0f766e',  badgeBg:'#f0fdfa', badgeText:'#0f766e', badgeBorder:'#99f6e4', stripColor:'#14b8a6', lightBg:'#f0fdfa' },
   };
-  const DEFAULT_STYLE={cardStyle:'bg-base-3 border-base-5',numColor:'text-mid',badgeStyle:'bg-base-4 text-lo border border-base-5'};
+  const DEFAULT_STYLE={ borderColor:'#d0dae6', accentColor:'#94a3b8', numColor:'#475569', badgeBg:'#f8fafc', badgeText:'#64748b', badgeBorder:'#e2e8f0', stripColor:'#94a3b8', lightBg:'#f8fafc' };
 
   return (
     <div>
@@ -419,7 +421,7 @@ export function ProductorDetail({ productor, campanas, ingeniero }:{ productor:P
           <h1 className="text-2xl font-bold text-hi">{productor.razon_social}</h1>
           {/* Stats inline */}
           <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-sm">
-            <span className="text-green-400 font-black text-lg">{Math.round(totalHas)} ha</span>
+            <span className="font-black text-lg" style={{color:'#15803d'}}>{Math.round(totalHas)} ha</span>
             <span className="text-mid">·</span>
             <span className="text-hi font-semibold">{lotes.length} lotes</span>
             <span className="text-mid">·</span>
@@ -675,50 +677,77 @@ export function ProductorDetail({ productor, campanas, ingeniero }:{ productor:P
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
           {lotesFiltrados.map(l=>{
             const actual=esCultivo(l.cultivo)?l.cultivo:esCultivo(l.cultivo_2)?l.cultivo_2:null;
-            // Si el cultivo actual es Soja pero es el 2do cultivo (hay un 1ro antes), usar estilo Soja 2°
             const esSegundoCultivo = actual === 'Soja' && esCultivo(l.cultivo) && esCultivo(l.cultivo_2) && l.cultivo !== 'Soja';
             const styleKey = esSegundoCultivo ? 'Soja 2°' : (actual ?? '');
-            const s=CROP_STYLES[styleKey]??DEFAULT_STYLE;
-            const cultivos=[l.cultivo,l.cultivo_2].filter(Boolean);
-            const cc=cropColor(actual??null);
-            return(
-              <div key={l.id} className={cn('aspect-square rounded-card flex flex-col relative overflow-hidden group border-2 transition-all duration-150 hover:-translate-y-1',s.cardStyle)}>
-                <div style={{height:'4px',background:cc,width:'100%'}}/>
-                <div className="absolute top-2 right-2 pointer-events-none">
-                  <svg width="52" height="46" viewBox="0 0 60 52">
-                    <polygon points="15,0 45,0 60,26 45,52 15,52 0,26" fill={cc+'15'} stroke={cc} strokeWidth="3"/>
-                  </svg>
-                </div>
+            const s = CROP_STYLES[styleKey] ?? DEFAULT_STYLE;
+            const cultivos = [l.cultivo, l.cultivo_2].filter(Boolean);
+            return (
+              <div key={l.id}
+                className="aspect-square rounded-card flex flex-col relative overflow-hidden group transition-all duration-150 hover:-translate-y-1 hover:shadow-lg bg-white"
+                style={{ border: `2px solid ${s.borderColor}`, boxShadow: `0 1px 4px rgba(0,0,0,0.06)` }}
+              >
+                {/* Franja de color superior por cultivo */}
+                <div style={{ height: '5px', background: s.stripColor, width: '100%', flexShrink: 0 }} />
+
                 <Link href={`/productores/${productor.id}/lotes/${l.id}`} className="flex flex-col justify-between flex-1 p-3 pb-8">
+                  {/* Nombre + variedad */}
                   <div>
-                    <p className="text-hi font-bold text-sm leading-tight line-clamp-2 pr-10">{l.nombre}</p>
-                    {l.variedad&&<p className="text-[10px] mt-0.5 truncate text-white font-bold opacity-80">{l.variedad}</p>}
+                    <p className="font-black text-sm leading-tight line-clamp-2" style={{ color: '#0f172a' }}>{l.nombre}</p>
+                    {l.variedad && (
+                      <p className="text-[10px] mt-0.5 truncate font-semibold" style={{ color: '#64748b' }}>{l.variedad}</p>
+                    )}
                   </div>
-                  <div className="flex items-baseline justify-center gap-1.5">
-                    <span className={cn('font-black text-4xl tabular-nums leading-none',s.numColor)}>{l.hectareas}</span>
-                    <span className={cn('font-bold text-sm',s.numColor)}>ha</span>
+
+                  {/* Hectáreas — centro */}
+                  <div className="flex items-baseline justify-center gap-1">
+                    <span className="font-black text-4xl tabular-nums leading-none" style={{ color: s.numColor }}>{l.hectareas}</span>
+                    <span className="font-bold text-sm" style={{ color: s.numColor }}>ha</span>
                   </div>
+
+                  {/* Badges + fecha */}
                   <div>
                     <div className="flex flex-wrap gap-1 mb-1">
-                      {cultivos.filter(c=>esCultivo(c)).map((c,i)=>{
-                        const cs=CROP_STYLES[c??'']??DEFAULT_STYLE;
-                        const isActual = c===actual;
-                        return <span key={c} className={cn('text-[9px] font-bold px-1.5 py-0.5 rounded',isActual?cs.badgeStyle:'bg-black/30 text-lo border border-base-5 opacity-60')}>
-                          {abrevCultivo(c)}{cultivos.filter(x=>esCultivo(x)).length>1&&i===1?' 2°':''}
-                        </span>;
+                      {cultivos.filter(c => esCultivo(c)).map((c, i) => {
+                        const cs = CROP_STYLES[c ?? ''] ?? DEFAULT_STYLE;
+                        const isActual = c === actual;
+                        return (
+                          <span key={c}
+                            className="text-[9px] font-black px-1.5 py-0.5 rounded"
+                            style={isActual
+                              ? { background: cs.badgeBg, color: cs.badgeText, border: `1px solid ${cs.badgeBorder}` }
+                              : { background: '#f1f5f9', color: '#94a3b8', border: '1px solid #e2e8f0' }
+                            }
+                          >
+                            {abrevCultivo(c)}{cultivos.filter(x => esCultivo(x)).length > 1 && i === 1 ? ' 2°' : ''}
+                          </span>
+                        );
                       })}
                     </div>
-                    {l.fecha_siembra&&<div className="font-mono text-[9px] text-lo">Siem: {fmtFecha(l.fecha_siembra)}</div>}
+                    {l.fecha_siembra && (
+                      <div className="font-mono text-[9px]" style={{ color: '#94a3b8' }}>
+                        Siem: {fmtFecha(l.fecha_siembra)}
+                      </div>
+                    )}
                   </div>
                 </Link>
-                <button onClick={()=>setConfirmDelete({id:l.id,nombre:l.nombre})}
-                  className="absolute bottom-2 right-2 w-7 h-7 rounded-full bg-black/60 border border-red-800 text-red-500 opacity-0 group-hover:opacity-100 transition-all hover:bg-red-600 hover:text-white flex items-center justify-center text-sm"
+
+                {/* Botón eliminar */}
+                <button onClick={() => setConfirmDelete({ id: l.id, nombre: l.nombre })}
+                  className="absolute bottom-2 right-2 w-7 h-7 rounded-full border border-red-200 text-red-400 opacity-0 group-hover:opacity-100 transition-all hover:bg-red-500 hover:text-white hover:border-red-500 flex items-center justify-center text-sm bg-white"
                   title="Eliminar lote">🗑</button>
               </div>
             );
           })}
-          <Link href={`/productores/${productor.id}/lotes/nuevo`} className="aspect-square rounded-card flex items-center justify-center border-2 border-dashed border-base-5 hover:border-amber-500 hover:text-amber-500 text-lo transition-all group">
-            <div className="text-center"><div className="text-4xl font-thin mb-1 group-hover:scale-110 transition-transform">+</div><div className="text-[10px] uppercase tracking-wider">Nuevo lote</div></div>
+          <Link href={`/productores/${productor.id}/lotes/nuevo`}
+            className="aspect-square rounded-card flex items-center justify-center border-2 border-dashed hover:shadow-md transition-all group bg-white"
+            style={{ borderColor: '#d0dae6' }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = '#0ea87a'; }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = '#d0dae6'; }}
+          >
+            <div className="text-center">
+              <div className="text-4xl font-thin mb-1 transition-transform group-hover:scale-110" style={{ color: '#94a3b8' }}>+</div>
+              <div className="text-[10px] uppercase tracking-wider font-bold" style={{ color: '#94a3b8' }}>Nuevo lote</div>
+            </div>
           </Link>
         </div>
       )}
