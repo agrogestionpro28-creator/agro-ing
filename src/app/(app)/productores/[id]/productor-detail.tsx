@@ -690,11 +690,11 @@ export function ProductorDetail({ productor, campanas, ingeniero }:{ productor:P
                 <div style={{ height: '5px', background: s.stripColor, width: '100%', flexShrink: 0 }} />
 
                 <Link href={`/productores/${productor.id}/lotes/${l.id}`} className="flex flex-col justify-between flex-1 p-3 pb-8">
-                  {/* Nombre + variedad */}
+                  {/* Nombre */}
                   <div>
-                    <p className="font-black text-sm leading-tight line-clamp-2" style={{ color: '#0f172a' }}>{l.nombre}</p>
+                    <p className="font-black text-base leading-tight line-clamp-2" style={{ color: '#0f172a' }}>{l.nombre}</p>
                     {l.variedad && (
-                      <p className="text-[10px] mt-0.5 truncate font-semibold" style={{ color: '#64748b' }}>{l.variedad}</p>
+                      <p className="text-xs mt-0.5 truncate font-semibold" style={{ color: '#475569' }}>{l.variedad}</p>
                     )}
                   </div>
 
@@ -704,27 +704,27 @@ export function ProductorDetail({ productor, campanas, ingeniero }:{ productor:P
                     <span className="font-bold text-sm" style={{ color: s.numColor }}>ha</span>
                   </div>
 
-                  {/* Badges + fecha */}
+                  {/* Cultivo badge + fecha */}
                   <div>
-                    <div className="flex flex-wrap gap-1 mb-1">
+                    <div className="flex flex-wrap gap-1 mb-1.5">
                       {cultivos.filter(c => esCultivo(c)).map((c, i) => {
                         const cs = CROP_STYLES[c ?? ''] ?? DEFAULT_STYLE;
                         const isActual = c === actual;
                         return (
                           <span key={c}
-                            className="text-[9px] font-black px-1.5 py-0.5 rounded"
+                            className="text-xs font-black px-2 py-0.5 rounded"
                             style={isActual
                               ? { background: cs.badgeBg, color: cs.badgeText, border: `1px solid ${cs.badgeBorder}` }
                               : { background: '#f1f5f9', color: '#94a3b8', border: '1px solid #e2e8f0' }
                             }
                           >
-                            {abrevCultivo(c)}{cultivos.filter(x => esCultivo(x)).length > 1 && i === 1 ? ' 2°' : ''}
+                            {c}{cultivos.filter(x => esCultivo(x)).length > 1 && i === 1 ? ' 2°' : ''}
                           </span>
                         );
                       })}
                     </div>
                     {l.fecha_siembra && (
-                      <div className="font-mono text-[9px]" style={{ color: '#94a3b8' }}>
+                      <div className="text-xs font-black" style={{ color: '#0f172a' }}>
                         Siem: {fmtFecha(l.fecha_siembra)}
                       </div>
                     )}
