@@ -118,43 +118,36 @@ export function AppHeader({
 
       <aside className={`
         fixed top-0 left-0 h-full z-40 flex flex-col
-        border-r
-        transition-transform duration-300 ease-out
-        w-56
+        transition-transform duration-300 ease-out w-56
         ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
         lg:translate-x-0 lg:static lg:h-screen lg:shrink-0
       `}
-      style={{
-        background: 'rgba(8,16,26,0.75)',
-        borderColor: 'rgba(34,211,160,0.15)',
-        backdropFilter: 'blur(20px)',
-        WebkitBackdropFilter: 'blur(20px)',
-      }}>
+      style={{ background: '#0a0a0a', borderRight: '1px solid #1f1f1f' }}>
+
         {/* Logo / Marca */}
-        <div className="px-5 py-5 border-b border-base-4/60">
+        <div className="px-5 py-5" style={{ borderBottom: '1px solid #1f1f1f' }}>
           <div className="flex items-center gap-2.5">
             <div
               className="w-8 h-8 rounded-lg flex items-center justify-center font-black text-xs shrink-0"
-              style={{ background: 'linear-gradient(135deg,#22d3a0 0%,#0284c7 100%)', color: '#060a0e' }}
+              style={{ background: 'linear-gradient(135deg,#22d3a0 0%,#0284c7 100%)', color: '#0a0a0a' }}
             >
               AG
             </div>
             <div>
-              <p className="text-hi font-black text-sm leading-none">AgroGestión</p>
-              <p className="text-lo text-[10px] leading-tight">Panel Ingeniero</p>
+              <p className="font-black text-sm leading-none text-white">AgroGestión</p>
+              <p className="text-[10px] leading-tight" style={{ color: '#6b7280' }}>Panel Ingeniero</p>
             </div>
           </div>
         </div>
 
         {/* Selector campaña */}
-        <div className="px-4 py-3 border-b border-base-4/40">
-          <p className="text-[10px] font-bold uppercase tracking-wider text-lo mb-1.5">Campaña activa</p>
+        <div className="px-4 py-3" style={{ borderBottom: '1px solid #1f1f1f' }}>
+          <p className="text-[10px] font-black uppercase tracking-wider mb-1.5" style={{ color: '#6b7280' }}>Campaña activa</p>
           <select
             value={campanaActivaId}
             onChange={e => onCampanaChange(e.target.value)}
-            className="w-full bg-base-3 border border-base-5 rounded-lg px-3 py-1.5
-                       text-hi font-bold text-xs focus:outline-none focus:border-ochre/60
-                       focus:ring-2 focus:ring-ochre/15 cursor-pointer transition-all"
+            className="w-full rounded-lg px-3 py-1.5 font-bold text-xs cursor-pointer transition-all focus:outline-none"
+            style={{ background: '#1a1a1a', border: '1px solid #2a2a2a', color: '#ffffff' }}
           >
             {campanas.map(c => (
               <option key={c.id} value={c.id}>{c.nombre}</option>
@@ -164,7 +157,7 @@ export function AppHeader({
 
         {/* Navegación */}
         <nav className="flex-1 overflow-y-auto py-3 px-2 space-y-0.5">
-          <p className="px-3 pb-2 text-[10px] font-bold uppercase tracking-wider text-lo/60">Módulos</p>
+          <p className="px-3 pb-2 text-[10px] font-black uppercase tracking-wider" style={{ color: '#404040' }}>Módulos</p>
           {NAV.map(({ href, label, icon: Icon }) => {
             const active = pathname === href || (href !== '/dashboard' && pathname.startsWith(href));
             return (
@@ -172,18 +165,18 @@ export function AppHeader({
                 key={href}
                 href={href}
                 onClick={() => setSidebarOpen(false)}
-                className={`
-                  flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold
-                  transition-all duration-150 group
-                  ${active
-                    ? 'bg-ochre/10 text-ochre'
-                    : 'text-mid hover:text-hi hover:bg-base-4'}
-                `}
+                className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-black transition-all duration-150 group"
+                style={active
+                  ? { background: 'rgba(34,211,160,0.12)', color: '#22d3a0' }
+                  : { color: '#9ca3af' }
+                }
+                onMouseEnter={e => { if (!active) { (e.currentTarget as HTMLElement).style.background = '#1a1a1a'; (e.currentTarget as HTMLElement).style.color = '#ffffff'; } }}
+                onMouseLeave={e => { if (!active) { (e.currentTarget as HTMLElement).style.background = 'transparent'; (e.currentTarget as HTMLElement).style.color = '#9ca3af'; } }}
               >
-                <Icon className={`w-4 h-4 shrink-0 ${active ? 'text-ochre' : 'text-lo group-hover:text-mid'}`} />
+                <Icon className="w-4 h-4 shrink-0" />
                 {label}
                 {active && (
-                  <span className="ml-auto w-1.5 h-1.5 rounded-full bg-ochre shrink-0" />
+                  <span className="ml-auto w-1.5 h-1.5 rounded-full shrink-0" style={{ background: '#22d3a0' }} />
                 )}
               </Link>
             );
@@ -191,41 +184,52 @@ export function AppHeader({
         </nav>
 
         {/* Footer del sidebar — perfil */}
-        <div className="border-t border-base-4/60 p-3">
+        <div className="p-3" style={{ borderTop: '1px solid #1f1f1f' }}>
           <div className="relative">
             <button
               onClick={() => setShowMenu(v => !v)}
-              className="w-full flex items-center gap-2.5 px-2 py-2 rounded-xl hover:bg-base-3 transition-all text-left"
+              className="w-full flex items-center gap-2.5 px-2 py-2 rounded-xl transition-all text-left"
+              style={{ color: '#ffffff' }}
+              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = '#1a1a1a'; }}
+              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
             >
               <div
                 className="w-8 h-8 rounded-lg flex items-center justify-center font-black text-xs shrink-0"
-                style={{ background: 'linear-gradient(135deg,#22d3a0 0%,#0284c7 100%)', color: '#060a0e' }}
+                style={{ background: 'linear-gradient(135deg,#22d3a0 0%,#0284c7 100%)', color: '#0a0a0a' }}
               >
                 {initials}
               </div>
               <div className="min-w-0 flex-1">
-                <p className="text-hi text-xs font-bold leading-tight truncate">{nombreCompleto}</p>
-                <p className="text-lo text-[10px] truncate">
+                <p className="text-xs font-black leading-tight truncate text-white">{nombreCompleto}</p>
+                <p className="text-[10px] truncate" style={{ color: '#6b7280' }}>
                   {ingeniero.matricula ? `M.P. ${ingeniero.matricula}` : 'Ing. Agrónomo'}
                 </p>
               </div>
-              <span className="text-lo text-xs shrink-0">⚙</span>
+              <span className="text-xs shrink-0" style={{ color: '#6b7280' }}>⚙</span>
             </button>
 
             {showMenu && (
               <>
                 <div className="fixed inset-0 z-40" onClick={() => setShowMenu(false)} />
-                <div className="absolute bottom-full left-0 mb-2 w-full bg-base-2 border border-base-4 rounded-xl py-1 shadow-2xl z-50 animate-fade-in">
+                <div className="absolute bottom-full left-0 mb-2 w-full rounded-xl py-1 shadow-2xl z-50 animate-fade-in"
+                  style={{ background: '#141414', border: '1px solid #2a2a2a' }}>
                   <Link
                     href="/perfil"
                     onClick={() => { setShowMenu(false); setSidebarOpen(false); }}
-                    className="flex items-center gap-2 px-4 py-2.5 text-sm text-mid hover:text-hi hover:bg-base-3 transition-colors"
+                    className="flex items-center gap-2 px-4 py-2.5 text-sm font-bold transition-colors"
+                    style={{ color: '#d1d5db' }}
+                    onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = '#1f1f1f'; (e.currentTarget as HTMLElement).style.color = '#ffffff'; }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; (e.currentTarget as HTMLElement).style.color = '#d1d5db'; }}
                   >
                     <span>👤</span> Editar perfil
                   </Link>
-                  <div className="h-px bg-base-4 my-1" />
+                  <div className="h-px my-1" style={{ background: '#2a2a2a' }} />
                   <form action={logout}>
-                    <button className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-danger hover:bg-base-3 transition-colors">
+                    <button className="w-full flex items-center gap-2 px-4 py-2.5 text-sm font-bold transition-colors"
+                      style={{ color: '#f87171' }}
+                      onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = '#1f1f1f'; }}
+                      onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
+                    >
                       <span>↩</span> Cerrar sesión
                     </button>
                   </form>
@@ -237,7 +241,7 @@ export function AppHeader({
       </aside>
 
       {/* ── TOP BAR (mobile) ────────────────────────────────── */}
-      <header className="lg:hidden sticky top-0 z-30 border-b flex items-center gap-3 px-4 py-3" style={{ background: "rgba(8,16,26,0.85)", borderColor: "rgba(34,211,160,0.15)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)" }}>
+      <header className="lg:hidden sticky top-0 z-30 flex items-center gap-3 px-4 py-3" style={{ background: "#0a0a0a", borderBottom: "1px solid #1f1f1f" }}>
         <button
           onClick={() => setSidebarOpen(true)}
           className="p-1.5 rounded-lg hover:bg-base-3 text-mid hover:text-hi transition-all"

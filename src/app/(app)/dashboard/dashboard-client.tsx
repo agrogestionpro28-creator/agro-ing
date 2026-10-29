@@ -10,12 +10,12 @@ type HasRow      = { productor_id: string; campana_id: string; hectareas_total: 
 type CobranzaRow = { productor_id: string; campana_id: string; estado: string; total_cobrado: number; monto_unitario: number | null; modalidad: string };
 
 const CULTIVO_COLOR: Record<string, string> = {
-  Soja:     'bg-emerald-100 text-emerald-700',
-  Maíz:     'bg-sky-100 text-sky-700',
-  Trigo:    'bg-amber-100 text-amber-700',
-  Girasol:  'bg-yellow-100 text-yellow-700',
-  Sorgo:    'bg-orange-100 text-orange-700',
-  Cebada:   'bg-teal-100 text-teal-700',
+  Soja:     'bg-emerald-100 text-emerald-800 font-black',
+  Maíz:     'bg-sky-100 text-sky-800 font-black',
+  Trigo:    'bg-amber-100 text-amber-800 font-black',
+  Girasol:  'bg-yellow-100 text-yellow-800 font-black',
+  Sorgo:    'bg-orange-100 text-orange-800 font-black',
+  Cebada:   'bg-teal-100 text-teal-800 font-black',
 };
 
 const ESTADO_BADGE: Record<string, string> = {
@@ -63,7 +63,7 @@ export function DashboardClient({
       <div className="flex items-end justify-between flex-wrap gap-4">
         <div>
           <p className="eyebrow mb-1">Campaña {campanaActual?.nombre ?? '—'}</p>
-          <h1 className="text-2xl font-black text-hi tracking-tight">Mis Productores</h1>
+          <h1 className="text-2xl font-black tracking-tight" style={{ color: '#0f172a' }}>Mis Productores</h1>
         </div>
         <Link href="/productores/nuevo" className="btn-primary btn-sm">
           + Nuevo productor
@@ -106,8 +106,8 @@ export function DashboardClient({
             {/* Barra acento lateral */}
             <div className="absolute left-0 top-3 bottom-3 w-0.5 rounded-full" style={{ background: accent }} />
             <p className={`text-3xl font-black tabular-nums leading-none ${color}`}>{value}</p>
-            <p className="text-hi text-sm font-bold mt-1.5">{label}</p>
-            <p className="text-lo text-xs mt-0.5">{sub}</p>
+            <p className="text-sm font-black mt-1.5" style={{ color: '#0f172a' }}>{label}</p>
+            <p className="text-xs mt-0.5 font-semibold" style={{ color: '#64748b' }}>{sub}</p>
           </div>
         ))}
       </div>
@@ -150,7 +150,7 @@ export function DashboardClient({
 
                 {/* Top: localidad + estado cobranza */}
                 <div className="flex items-start justify-between gap-1">
-                  <span className="eyebrow truncate leading-none text-ochre/80">
+                  <span className="text-[10px] font-black tracking-[0.16em] uppercase truncate leading-none" style={{ color: '#0284c7' }}>
                     {p.localidad ?? ''}
                   </span>
                   <span className={cn(ESTADO_BADGE[estado], 'shrink-0 leading-none text-[9px]')}>
@@ -159,17 +159,17 @@ export function DashboardClient({
                 </div>
 
                 {/* Nombre */}
-                <div className="text-slate-800 font-bold text-sm leading-tight line-clamp-2">
+                <div className="font-black text-sm leading-tight line-clamp-2" style={{ color: '#0f172a' }}>
                   {p.razon_social}
                 </div>
 
                 {/* Bottom: ha + cultivos */}
                 <div>
                   <div className="flex items-baseline gap-1">
-                    <span className="text-emerald-600 font-black text-2xl leading-none tabular-nums">
+                    <span className="font-black text-2xl leading-none tabular-nums" style={{ color: '#059669' }}>
                       {has ? Math.round(Number(has.hectareas_total)) : '—'}
                     </span>
-                    <span className="text-lo text-[10px]">ha</span>
+                    <span className="text-[10px] font-bold" style={{ color: '#64748b' }}>ha</span>
                   </div>
 
                   <div className="flex flex-wrap gap-1 mt-1.5">
@@ -183,7 +183,7 @@ export function DashboardClient({
                     ))}
                   </div>
 
-                  <p className="text-lo text-[9px] mt-1.5 tabular-nums">
+                  <p className="text-[9px] font-bold mt-1.5 tabular-nums" style={{ color: '#64748b' }}>
                     {has ? `${has.cantidad_lotes} lotes` : 'Sin lotes'}
                   </p>
                 </div>
