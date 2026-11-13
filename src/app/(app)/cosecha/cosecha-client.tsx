@@ -75,6 +75,7 @@ export function CosechaClient({
   const [filtroProductor, setFiltroProductor] = useState('');
   const [sugerencia2doCultivo, setSugerencia2doCultivo] = useState<{ lote: Lote; cultivo2: string } | null>(null);
   const [preloadForm, setPreloadForm] = useState<{ loteId: string; productorId: string; cultivo: string } | null>(null);
+  const [editando, setEditando] = useState<Cosecha | null>(null);
 
   // Lotes de la campaña actual
   const lotesActuales = useMemo(() => lotes.filter(l => l.campana_id === campanaId), [lotes, campanaId]);
@@ -134,15 +135,25 @@ export function CosechaClient({
     }).sort((a, b) => (b.totalHa || 0) - (a.totalHa || 0));
   }, [enriched]);
 
+  function onEditar(c: Cosecha) {
+    setEditando(c);
+    setSugerencia2doCultivo(null);
+    setPreloadForm(null);
+    setShowForm(true);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
   async function onGuardado(nueva: Cosecha) {
     const cosechasActualizadas = [nueva, ...cosechas.filter(c => c.id !== nueva.id)];
     setCosechas(cosechasActualizadas);
     setShowForm(false);
     setPreloadForm(null);
+    setEditando(null);
 
-    // Verificar si el lote tiene cultivo_2 y no tiene cosecha de ese cultivo aún
+    // Verificar si el lote tiene cultivo_2 y no tiene cosecha de ese cultivo aún (solo en carga nueva, no edición)
+    const eraEdicion = cosechas.some(c => c.id === nueva.id);
     const lote = lotesActuales.find(l => l.id === nueva.lote_id);
-    if (lote?.cultivo_2) {
+    if (!eraEdicion && lote?.cultivo_2) {
       const yaExiste = cosechasActualizadas.some(
         c => c.lote_id === lote.id && c.cultivo === lote.cultivo_2
       );
@@ -152,7 +163,7 @@ export function CosechaClient({
       }
     }
 
-    setToast('Cosecha guardada ✓');
+    setToast(eraEdicion ? 'Cosecha actualizada ✓' : 'Cosecha guardada ✓');
     setTimeout(() => setToast(null), 2000);
   }
 
@@ -189,7 +200,7 @@ export function CosechaClient({
           <h1 className="text-2xl font-black tracking-tight mt-1" style={{ color: '#0f172a' }}>Rindes de cosecha</h1>
           <p className="text-sm text-mid mt-0.5">Cargá lote por lote. Comparativas automáticas por cultivo y productor.</p>
         </div>
-        <button className="btn-primary" onClick={() => setShowForm(v => !v)}>
+        <button className="btn-primary" onClick={() => { setShowForm(v => !v); setEditando(null); setPreloadForm(null); setSugerencia2doCultivo(null); }}>
           {showForm ? 'Cerrar' : '+ Cargar rinde'}
         </button>
       </div>
@@ -248,6 +259,7 @@ export function CosechaClient({
           userId={userId}
           onGuardado={onGuardado}
           preload={preloadForm ?? undefined}
+          editando={editando ?? undefined}
         />
       )}
 
@@ -582,11 +594,18 @@ export function CosechaClient({
                             {c.fecha_cosecha ? fmtFecha(c.fecha_cosecha) : '—'}
                           </td>
                           <td className="px-4 py-2.5">
-                            <button
-                              onClick={() => onEliminar(c.id)}
-                              className="text-mid hover:text-danger transition-colors text-xs"
-                              title="Eliminar"
-                            >✕</button>
+                            <div className="flex gap-2 justify-end">
+                              <button
+                                onClick={() => onEditar(c)}
+                                className="text-mid hover:text-afa transition-colors text-xs"
+                                title="Editar"
+                              >✏️</button>
+                              <button
+                                onClick={() => onEliminar(c.id)}
+                                className="text-mid hover:text-danger transition-colors text-xs"
+                                title="Eliminar"
+                              >✕</button>
+                            </div>
                           </td>
                         </tr>
                       );
@@ -634,24 +653,32 @@ function BarraRinde({ min, max, prom, color }: { min: number; max: number; prom:
 const CULTIVOS_LISTA = ['Soja', 'Soja 2°', 'Maíz', 'Trigo', 'Cebada', 'Sorgo', 'Girasol', 'Alfalfa'];
 
 function FormCosecha({
-  productores, lotes, userId, onGuardado, preload,
+  productores, lotes, userId, onGuardado, preload, editando,
 }: {
   productores: Productor[];
   lotes:       Lote[];
   userId:      string;
   onGuardado:  (c: Cosecha) => void;
   preload?:    { loteId: string; productorId: string; cultivo: string };
+  editando?:   Cosecha;
 }) {
-  const [productorId, setProductorId] = useState(preload?.productorId ?? productores[0]?.id ?? '');
-  const [loteId,      setLoteId]      = useState(preload?.loteId ?? '');
-  const [cultivo,     setCultivo]     = useState(preload?.cultivo ?? '');
-  const [fecha,       setFecha]       = useState(new Date().toISOString().slice(0, 10));
-  const [rindeKgHa,   setRindeKgHa]   = useState('');
-  const [humedad,     setHumedad]     = useState('');
-  const [proteina,    setProteina]    = useState('');
-  const [aceite,      setAceite]      = useState('');
-  const [pesoHecto,   setPesoHecto]   = useState('');
-  const [obs,         setObs]         = useState('');
+  // Si editando: usar sus datos; si preload: usar preload; si nada: defaults
+  const loteEdit = editando ? lotes.find(l => l.id === editando.lote_id) : null;
+  const initProductorId = editando
+    ? (loteEdit?.productor_id ?? productores[0]?.id ?? '')
+    : (preload?.productorId ?? productores[0]?.id ?? '');
+
+  const [productorId, setProductorId] = useState(initProductorId);
+  const [loteId,      setLoteId]      = useState(editando?.lote_id ?? preload?.loteId ?? '');
+  const [cultivo,     setCultivo]     = useState(editando?.cultivo ?? preload?.cultivo ?? '');
+  const str = (v: number | null | undefined) => v != null ? String(v) : '';
+  const [fecha,       setFecha]       = useState(editando?.fecha_cosecha ?? new Date().toISOString().slice(0, 10));
+  const [rindeKgHa,   setRindeKgHa]   = useState(str(editando?.rinde_kg_ha));
+  const [humedad,     setHumedad]     = useState(str(editando?.humedad_pct));
+  const [proteina,    setProteina]    = useState(str(editando?.proteina_pct));
+  const [aceite,      setAceite]      = useState(str(editando?.aceite_pct));
+  const [pesoHecto,   setPesoHecto]   = useState(str(editando?.peso_hecto));
+  const [obs,         setObs]         = useState(editando?.observaciones ?? '');
   const [saving,      setSaving]      = useState(false);
   const [err,         setErr]         = useState<string | null>(null);
 
@@ -689,7 +716,10 @@ function FormCosecha({
       peso_hecto:       num(pesoHecto),
       observaciones:    obs || null,
     };
-    const { data, error } = await (createClient() as any).from('cosechas').insert(row).select().single();
+    const sb = createClient() as any;
+    const { data, error } = editando
+      ? await sb.from('cosechas').update(row).eq('id', editando.id).select().single()
+      : await sb.from('cosechas').insert(row).select().single();
     setSaving(false);
     if (error) { setErr(`Error: ${error.message}`); return; }
     onGuardado(data);
@@ -697,11 +727,27 @@ function FormCosecha({
 
   const lotePreloaded = preload ? lotes.find(l => l.id === preload.loteId) : null;
   const prodPreloaded = lotePreloaded ? productores.find(p => p.id === lotePreloaded.productor_id) : null;
-  const st2 = preload ? cultStyle(preload.cultivo) : null;
+  const st2 = preload ? cultStyle(preload.cultivo) : editando ? cultStyle(editando.cultivo) : null;
+  const stEdit = editando ? cultStyle(editando.cultivo) : null;
+  const loteEditDisplay = editando ? lotes.find(l => l.id === editando.lote_id) : null;
+  const prodEditDisplay = loteEditDisplay ? productores.find(p => p.id === loteEditDisplay.productor_id) : null;
 
   return (
     <form onSubmit={guardar} className="card p-5 space-y-4" style={st2 ? { borderLeft: `4px solid ${st2.strip}` } : undefined}>
-      {preload && st2 ? (
+      {editando && stEdit ? (
+        <div className="flex items-center gap-3">
+          <span className="text-lg">✏️</span>
+          <div>
+            <p className="text-xs font-black uppercase tracking-widest" style={{ color: stEdit.text }}>
+              Editando cosecha · {editando.cultivo}
+            </p>
+            <p className="font-black text-sm" style={{ color: '#0f172a' }}>
+              {loteEditDisplay?.nombre}
+              {prodEditDisplay && <span className="font-normal text-mid ml-1">· {prodEditDisplay.razon_social}</span>}
+            </p>
+          </div>
+        </div>
+      ) : preload && st2 ? (
         <div className="flex items-center gap-3">
           <span className="text-lg">🌱</span>
           <div>
@@ -719,8 +765,10 @@ function FormCosecha({
       )}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <label className="grid gap-1 text-xs text-mid">Productor
-          {preload ? (
-            <div className="field bg-base-3 text-mid cursor-default">{prodPreloaded?.razon_social ?? '—'}</div>
+          {(preload || editando) ? (
+            <div className="field bg-base-3 text-mid cursor-default">
+              {editando ? (prodEditDisplay?.razon_social ?? '—') : (prodPreloaded?.razon_social ?? '—')}
+            </div>
           ) : (
             <select className="field" value={productorId} onChange={e => onProductor(e.target.value)}>
               {productores.map(p => <option key={p.id} value={p.id}>{p.razon_social}</option>)}
@@ -728,8 +776,10 @@ function FormCosecha({
           )}
         </label>
         <label className="grid gap-1 text-xs text-mid">Lote
-          {preload ? (
-            <div className="field bg-base-3 text-mid cursor-default">{lotePreloaded?.nombre} · {lotePreloaded?.hectareas} ha</div>
+          {(preload || editando) ? (
+            <div className="field bg-base-3 text-mid cursor-default">
+              {editando ? `${loteEditDisplay?.nombre} · ${loteEditDisplay?.hectareas} ha` : `${lotePreloaded?.nombre} · ${lotePreloaded?.hectareas} ha`}
+            </div>
           ) : (
             <select className="field" value={loteId} onChange={e => onLote(e.target.value)}>
               <option value="">Seleccionar lote…</option>
@@ -738,8 +788,10 @@ function FormCosecha({
           )}
         </label>
         <label className="grid gap-1 text-xs text-mid">Cultivo cosechado
-          {preload ? (
-            <div className="field font-bold cursor-default" style={{ background: st2!.badge, color: st2!.text, border: `1px solid ${st2!.border}` }}>{preload.cultivo}</div>
+          {(preload || editando) ? (
+            <div className="field font-bold cursor-default" style={{ background: st2!.badge, color: st2!.text, border: `1px solid ${st2!.border}` }}>
+              {editando ? editando.cultivo : preload!.cultivo}
+            </div>
           ) : (
             <select className="field" value={cultivo} onChange={e => setCultivo(e.target.value)}>
               <option value="">Seleccionar…</option>
@@ -783,7 +835,7 @@ function FormCosecha({
       {err && <p className="text-danger text-sm">{err}</p>}
       <div className="flex gap-3">
         <button type="submit" className="btn-afa" disabled={saving || !loteId || !cultivo}>
-          {saving ? 'Guardando…' : 'Guardar cosecha'}
+          {saving ? 'Guardando…' : editando ? 'Guardar cambios' : 'Guardar cosecha'}
         </button>
       </div>
     </form>
