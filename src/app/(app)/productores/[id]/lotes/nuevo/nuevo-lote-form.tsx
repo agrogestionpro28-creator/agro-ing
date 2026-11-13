@@ -3,7 +3,7 @@ import { useActionState } from 'react';
 import Link from 'next/link';
 import { crearLote } from './actions';
 
-const CULTIVOS = ['Soja','Maíz','Trigo','Girasol','Sorgo','Cebada','Alfalfa','Otro'] as const;
+const CULTIVOS = ['Soja','Soja 2°','Maíz','Trigo','Girasol','Sorgo','Cebada','Alfalfa','Otro'] as const;
 type State = { error?: string } | null;
 type Productor = { id: string; razon_social: string };
 type Campana = { id: string; nombre: string };

@@ -9,7 +9,7 @@ function fmtFecha(iso: string): string {
   return `${d}/${m}/${y}`;
 }
 
-const CULTIVOS = ['Soja','Maíz','Trigo','Girasol','Sorgo','Cebada','Alfalfa','Otro'];
+const CULTIVOS = ['Soja','Soja 2°','Maíz','Trigo','Girasol','Sorgo','Cebada','Alfalfa','Otro'];
 const TIPOS_BASE = ['Herbicida','Fungicida','Insecticida','Fertilizante','Inoculante','Otro'];
 
 function cropColor(c: string | null) {
