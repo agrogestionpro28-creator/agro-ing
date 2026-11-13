@@ -122,9 +122,8 @@ export function AnalisisClient({ productores, ingeniero, userId }: { productores
       {/* Encabezado + filtros */}
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="eyebrow">Análisis de suelo · Campaña {campana?.nombre ?? ''}</p>
-          <h1 className="text-2xl font-black text-hi mt-1">{productor?.razon_social ?? 'Sin productores'}</h1>
-          <p className="text-mid text-sm mt-1">Comparación entre los lotes del productor. Último análisis de cada lote.</p>
+          <h2 className="text-xl font-black text-hi">{productor?.razon_social ?? 'Sin productores'}</h2>
+          <p className="text-mid text-sm mt-0.5">Comparación entre lotes · último análisis de cada uno</p>
         </div>
         <div className="flex flex-wrap items-end gap-3">
           <label className="grid gap-1">
