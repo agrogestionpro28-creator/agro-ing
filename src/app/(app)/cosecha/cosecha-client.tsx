@@ -73,6 +73,8 @@ export function CosechaClient({
   const [toast, setToast] = useState<string | null>(null);
   const [filtroCultivo, setFiltroCultivo] = useState('');
   const [filtroProductor, setFiltroProductor] = useState('');
+  const [sugerencia2doCultivo, setSugerencia2doCultivo] = useState<{ lote: Lote; cultivo2: string } | null>(null);
+  const [preloadForm, setPreloadForm] = useState<{ loteId: string; productorId: string; cultivo: string } | null>(null);
 
   // Lotes de la campaña actual
   const lotesActuales = useMemo(() => lotes.filter(l => l.campana_id === campanaId), [lotes, campanaId]);
@@ -133,8 +135,39 @@ export function CosechaClient({
   }, [enriched]);
 
   async function onGuardado(nueva: Cosecha) {
-    setCosechas(prev => [nueva, ...prev.filter(c => c.id !== nueva.id)]);
+    const cosechasActualizadas = [nueva, ...cosechas.filter(c => c.id !== nueva.id)];
+    setCosechas(cosechasActualizadas);
     setShowForm(false);
+    setPreloadForm(null);
+
+    // Verificar si el lote tiene cultivo_2 y no tiene cosecha de ese cultivo aún
+    const lote = lotesActuales.find(l => l.id === nueva.lote_id);
+    if (lote?.cultivo_2) {
+      const yaExiste = cosechasActualizadas.some(
+        c => c.lote_id === lote.id && c.cultivo === lote.cultivo_2
+      );
+      if (!yaExiste) {
+        setSugerencia2doCultivo({ lote, cultivo2: lote.cultivo_2 });
+        return; // No mostrar toast aún, lo mostrará al aceptar/rechazar
+      }
+    }
+
+    setToast('Cosecha guardada ✓');
+    setTimeout(() => setToast(null), 2000);
+  }
+
+  function aceptarSegundoCultivo() {
+    if (!sugerencia2doCultivo) return;
+    const { lote, cultivo2 } = sugerencia2doCultivo;
+    setSugerencia2doCultivo(null);
+    setPreloadForm({ loteId: lote.id, productorId: lote.productor_id, cultivo: cultivo2 });
+    setShowForm(true);
+    setToast('Cosecha guardada ✓');
+    setTimeout(() => setToast(null), 2000);
+  }
+
+  function rechazarSegundoCultivo() {
+    setSugerencia2doCultivo(null);
     setToast('Cosecha guardada ✓');
     setTimeout(() => setToast(null), 2000);
   }
@@ -161,6 +194,52 @@ export function CosechaClient({
         </button>
       </div>
 
+      {/* Banner sugerencia segundo cultivo */}
+      {sugerencia2doCultivo && (() => {
+        const { lote, cultivo2 } = sugerencia2doCultivo;
+        const st = cultStyle(cultivo2);
+        const prod = productores.find(p => p.id === lote.productor_id);
+        return (
+          <div
+            className="rounded-2xl border-2 p-5 flex flex-col sm:flex-row sm:items-center gap-4"
+            style={{ background: st.badge, borderColor: st.border }}
+          >
+            <div className="flex-1">
+              <p className="text-xs font-black uppercase tracking-widest mb-1" style={{ color: st.text }}>
+                🌱 Segundo cultivo disponible
+              </p>
+              <p className="font-black text-base" style={{ color: '#0f172a' }}>
+                {lote.nombre}
+                <span className="ml-2 text-sm font-semibold" style={{ color: '#475569' }}>
+                  · {prod?.razon_social}
+                </span>
+              </p>
+              <p className="text-sm mt-1" style={{ color: '#475569' }}>
+                El lote fue cosechado. Ahora está libre para el{' '}
+                <strong style={{ color: st.text }}>{cultivo2}</strong> de segunda.
+                ¿Querés cargar el rinde?
+              </p>
+            </div>
+            <div className="flex gap-2 shrink-0">
+              <button
+                onClick={aceptarSegundoCultivo}
+                className="px-4 py-2 rounded-xl text-sm font-black transition-all"
+                style={{ background: st.strip, color: '#fff' }}
+              >
+                Cargar {cultivo2}
+              </button>
+              <button
+                onClick={rechazarSegundoCultivo}
+                className="px-4 py-2 rounded-xl text-sm font-semibold transition-all"
+                style={{ background: '#f1f5f9', color: '#64748b' }}
+              >
+                Ahora no
+              </button>
+            </div>
+          </div>
+        );
+      })()}
+
       {/* Formulario */}
       {showForm && (
         <FormCosecha
@@ -168,6 +247,7 @@ export function CosechaClient({
           lotes={lotesActuales}
           userId={userId}
           onGuardado={onGuardado}
+          preload={preloadForm ?? undefined}
         />
       )}
 
@@ -554,16 +634,17 @@ function BarraRinde({ min, max, prom, color }: { min: number; max: number; prom:
 const CULTIVOS_LISTA = ['Soja', 'Soja 2°', 'Maíz', 'Trigo', 'Cebada', 'Sorgo', 'Girasol', 'Alfalfa'];
 
 function FormCosecha({
-  productores, lotes, userId, onGuardado,
+  productores, lotes, userId, onGuardado, preload,
 }: {
   productores: Productor[];
   lotes:       Lote[];
   userId:      string;
   onGuardado:  (c: Cosecha) => void;
+  preload?:    { loteId: string; productorId: string; cultivo: string };
 }) {
-  const [productorId, setProductorId] = useState(productores[0]?.id ?? '');
-  const [loteId,      setLoteId]      = useState('');
-  const [cultivo,     setCultivo]     = useState('');
+  const [productorId, setProductorId] = useState(preload?.productorId ?? productores[0]?.id ?? '');
+  const [loteId,      setLoteId]      = useState(preload?.loteId ?? '');
+  const [cultivo,     setCultivo]     = useState(preload?.cultivo ?? '');
   const [fecha,       setFecha]       = useState(new Date().toISOString().slice(0, 10));
   const [rindeKgHa,   setRindeKgHa]   = useState('');
   const [humedad,     setHumedad]     = useState('');
@@ -614,26 +695,57 @@ function FormCosecha({
     onGuardado(data);
   }
 
+  const lotePreloaded = preload ? lotes.find(l => l.id === preload.loteId) : null;
+  const prodPreloaded = lotePreloaded ? productores.find(p => p.id === lotePreloaded.productor_id) : null;
+  const st2 = preload ? cultStyle(preload.cultivo) : null;
+
   return (
-    <form onSubmit={guardar} className="card p-5 space-y-4">
-      <p className="eyebrow">Cargar rinde de cosecha</p>
+    <form onSubmit={guardar} className="card p-5 space-y-4" style={st2 ? { borderLeft: `4px solid ${st2.strip}` } : undefined}>
+      {preload && st2 ? (
+        <div className="flex items-center gap-3">
+          <span className="text-lg">🌱</span>
+          <div>
+            <p className="text-xs font-black uppercase tracking-widest" style={{ color: st2.text }}>
+              Segundo cultivo · {preload.cultivo}
+            </p>
+            <p className="font-black text-sm" style={{ color: '#0f172a' }}>
+              {lotePreloaded?.nombre}
+              {prodPreloaded && <span className="font-normal text-mid ml-1">· {prodPreloaded.razon_social}</span>}
+            </p>
+          </div>
+        </div>
+      ) : (
+        <p className="eyebrow">Cargar rinde de cosecha</p>
+      )}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <label className="grid gap-1 text-xs text-mid">Productor
-          <select className="field" value={productorId} onChange={e => onProductor(e.target.value)}>
-            {productores.map(p => <option key={p.id} value={p.id}>{p.razon_social}</option>)}
-          </select>
+          {preload ? (
+            <div className="field bg-base-3 text-mid cursor-default">{prodPreloaded?.razon_social ?? '—'}</div>
+          ) : (
+            <select className="field" value={productorId} onChange={e => onProductor(e.target.value)}>
+              {productores.map(p => <option key={p.id} value={p.id}>{p.razon_social}</option>)}
+            </select>
+          )}
         </label>
         <label className="grid gap-1 text-xs text-mid">Lote
-          <select className="field" value={loteId} onChange={e => onLote(e.target.value)}>
-            <option value="">Seleccionar lote…</option>
-            {lotesDelProd.map(l => <option key={l.id} value={l.id}>{l.nombre} · {l.hectareas} ha</option>)}
-          </select>
+          {preload ? (
+            <div className="field bg-base-3 text-mid cursor-default">{lotePreloaded?.nombre} · {lotePreloaded?.hectareas} ha</div>
+          ) : (
+            <select className="field" value={loteId} onChange={e => onLote(e.target.value)}>
+              <option value="">Seleccionar lote…</option>
+              {lotesDelProd.map(l => <option key={l.id} value={l.id}>{l.nombre} · {l.hectareas} ha</option>)}
+            </select>
+          )}
         </label>
         <label className="grid gap-1 text-xs text-mid">Cultivo cosechado
-          <select className="field" value={cultivo} onChange={e => setCultivo(e.target.value)}>
-            <option value="">Seleccionar…</option>
-            {CULTIVOS_LISTA.map(c => <option key={c} value={c}>{c}</option>)}
-          </select>
+          {preload ? (
+            <div className="field font-bold cursor-default" style={{ background: st2!.badge, color: st2!.text, border: `1px solid ${st2!.border}` }}>{preload.cultivo}</div>
+          ) : (
+            <select className="field" value={cultivo} onChange={e => setCultivo(e.target.value)}>
+              <option value="">Seleccionar…</option>
+              {CULTIVOS_LISTA.map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
+          )}
         </label>
         <label className="grid gap-1 text-xs text-mid">Fecha de cosecha
           <input type="date" className="field" value={fecha} onChange={e => setFecha(e.target.value)} />
