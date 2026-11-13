@@ -13,6 +13,7 @@ const NAV = [
   { href: '/aplicaciones', label: 'Aplicaciones',   icon: Icon_Aplicaciones },
   { href: '/recorrida',    label: 'Recorrida',       icon: Icon_Recorrida },
   { href: '/analisis',     label: 'Análisis',        icon: Icon_Analisis },
+  { href: '/cosecha',      label: 'Cosecha',         icon: Icon_Cosecha },
   { href: '/cobranza',     label: 'Cobranza',        icon: Icon_Cobranza },
   { href: '/recetas',      label: 'Recetas',         icon: Icon_Recetas },
   { href: '/bitacora',     label: 'Bitácora',        icon: Icon_Bitacora },
@@ -80,6 +81,13 @@ function Icon_Informes({ className }: { className?: string }) {
   return (
     <svg className={className} viewBox="0 0 20 20" fill="currentColor">
       <path fillRule="evenodd" d="M6 2a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7.414A2 2 0 0 0 15.414 6L12 2.586A2 2 0 0 0 10.586 2H6zm2 10a1 1 0 1 0 0 2h4a1 1 0 1 0 0-2H8zm0-4a1 1 0 1 0 0 2h4a1 1 0 1 0 0-2H8z" clipRule="evenodd" />
+    </svg>
+  )
+}
+function Icon_Cosecha({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 20 20" fill="currentColor">
+      <path d="M10 2a1 1 0 0 1 .894.553l1.618 3.278 3.618.526a1 1 0 0 1 .554 1.706l-2.618 2.552.618 3.603a1 1 0 0 1-1.451 1.054L10 13.347l-3.233 1.699a1 1 0 0 1-1.451-1.054l.618-3.603L3.316 8.063a1 1 0 0 1 .554-1.706l3.618-.526L9.106 2.553A1 1 0 0 1 10 2z" />
     </svg>
   )
 }
