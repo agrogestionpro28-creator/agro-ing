@@ -14,6 +14,7 @@ const NAV = [
   { href: '/recorrida',    label: 'Recorrida',       icon: Icon_Recorrida },
   { href: '/analisis',     label: 'Análisis',        icon: Icon_Analisis },
   { href: '/cosecha',      label: 'Cosecha',         icon: Icon_Cosecha },
+  { href: '/fenologia',    label: 'Fenología',       icon: Icon_Fenologia },
   { href: '/cobranza',     label: 'Cobranza',        icon: Icon_Cobranza },
   { href: '/recetas',      label: 'Recetas',         icon: Icon_Recetas },
   { href: '/bitacora',     label: 'Bitácora',        icon: Icon_Bitacora },
@@ -88,6 +89,13 @@ function Icon_Cosecha({ className }: { className?: string }) {
   return (
     <svg className={className} viewBox="0 0 20 20" fill="currentColor">
       <path d="M10 2a1 1 0 0 1 .894.553l1.618 3.278 3.618.526a1 1 0 0 1 .554 1.706l-2.618 2.552.618 3.603a1 1 0 0 1-1.451 1.054L10 13.347l-3.233 1.699a1 1 0 0 1-1.451-1.054l.618-3.603L3.316 8.063a1 1 0 0 1 .554-1.706l3.618-.526L9.106 2.553A1 1 0 0 1 10 2z" />
+    </svg>
+  )
+}
+function Icon_Fenologia({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 20 20" fill="currentColor">
+      <path d="M2 10a8 8 0 1 1 16 0A8 8 0 0 1 2 10zm8-5a1 1 0 0 1 1 1v3.586l2.207 2.207a1 1 0 0 1-1.414 1.414l-2.5-2.5A1 1 0 0 1 9 10V6a1 1 0 0 1 1-1z"/>
     </svg>
   )
 }

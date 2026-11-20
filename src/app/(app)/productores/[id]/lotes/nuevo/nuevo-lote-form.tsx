@@ -67,6 +67,18 @@ export function NuevoLoteForm({ productor, campanas }: { productor: Productor; c
         </div>
 
         <div>
+          <label className="block text-xs font-semibold text-mid mb-1.5 uppercase tracking-wider">Tecnología soja</label>
+          <select name="tecnologia_soja" className="field">
+            <option value="">— No aplica / Sin definir</option>
+            <option value="Enlist">Enlist (tolerante 2,4-D + Glufosinato)</option>
+            <option value="Conkesta">Conkesta (Bt lepidópteros + 2,4-D)</option>
+            <option value="IPRO">IPRO (tolerante Glufosinato)</option>
+            <option value="Convencional">Convencional</option>
+          </select>
+          <p className="text-[10px] text-mid mt-1">Solo para lotes con soja. Define qué herbicidas e insecticidas aplican.</p>
+        </div>
+
+        <div>
           <label className="block text-xs font-semibold text-mid mb-1.5 uppercase tracking-wider">Notas</label>
           <textarea name="notas" rows={2} className="field resize-none" />
         </div>

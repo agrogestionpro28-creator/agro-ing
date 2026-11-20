@@ -24,7 +24,8 @@ export async function crearLote(_prev: unknown, formData: FormData) {
     cultivo_2:    String(formData.get('cultivo_2') ?? '').trim() || null,
     variedad:     String(formData.get('variedad') ?? '').trim()  || null,
     fecha_siembra: String(formData.get('fecha_siembra') ?? '').trim() || null,
-    notas:        String(formData.get('notas') ?? '').trim()     || null,
+    notas:           String(formData.get('notas') ?? '').trim()            || null,
+    tecnologia_soja: String(formData.get('tecnologia_soja') ?? '').trim() || null,
   });
 
   if (error) return { error: error.message };
