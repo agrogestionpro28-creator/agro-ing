@@ -73,6 +73,7 @@ export function CosechaClient({
   const [toast, setToast] = useState<string | null>(null);
   const [filtroCultivo, setFiltroCultivo] = useState('');
   const [filtroProductor, setFiltroProductor] = useState('');
+  const [filtroGlobal, setFiltroGlobal] = useState(''); // filtro que aplica a todas las tabs
   const [sugerencia2doCultivo, setSugerencia2doCultivo] = useState<{ lote: Lote; cultivo2: string } | null>(null);
   const [preloadForm, setPreloadForm] = useState<{ loteId: string; productorId: string; cultivo: string } | null>(null);
   const [editando, setEditando] = useState<Cosecha | null>(null);
@@ -87,12 +88,18 @@ export function CosechaClient({
     [cosechas, lotesIds]
   );
 
+  // Cosechas filtradas por cultivo global (aplica a todas las tabs excepto "Todos los lotes" que tiene sus propios filtros)
+  const cosechasGlobal = useMemo(
+    () => filtroGlobal ? cosechasActuales.filter(c => c.cultivo === filtroGlobal) : cosechasActuales,
+    [cosechasActuales, filtroGlobal]
+  );
+
   // Enriquecer cosechas con datos del lote y productor
-  const enriched = useMemo(() => cosechasActuales.map(c => {
+  const enriched = useMemo(() => cosechasGlobal.map(c => {
     const lote = lotesActuales.find(l => l.id === c.lote_id);
     const prod = productores.find(p => p.id === lote?.productor_id);
     return { ...c, lote, prod };
-  }), [cosechasActuales, lotesActuales, productores]);
+  }), [cosechasGlobal, lotesActuales, productores]);
 
   // Filtrados
   const filtrados = useMemo(() => enriched.filter(c =>
@@ -200,9 +207,23 @@ export function CosechaClient({
           <h1 className="text-2xl font-black tracking-tight mt-1" style={{ color: '#0f172a' }}>Rindes de cosecha</h1>
           <p className="text-sm text-mid mt-0.5">Cargá lote por lote. Comparativas automáticas por cultivo y productor.</p>
         </div>
-        <button className="btn-primary" onClick={() => { setShowForm(v => !v); setEditando(null); setPreloadForm(null); setSugerencia2doCultivo(null); }}>
-          {showForm ? 'Cerrar' : '+ Cargar rinde'}
-        </button>
+        <div className="flex items-center gap-3 flex-wrap">
+          {cosechasActuales.length > 0 && (
+            <select
+              value={filtroGlobal}
+              onChange={e => setFiltroGlobal(e.target.value)}
+              className="field py-1.5 text-sm min-w-[160px]"
+            >
+              <option value="">Todos los cultivos</option>
+              {[...new Set(cosechasActuales.map(c => c.cultivo))].sort().map(c => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </select>
+          )}
+          <button className="btn-primary" onClick={() => { setShowForm(v => !v); setEditando(null); setPreloadForm(null); setSugerencia2doCultivo(null); }}>
+            {showForm ? 'Cerrar' : '+ Cargar rinde'}
+          </button>
+        </div>
       </div>
 
       {/* Banner sugerencia segundo cultivo */}
