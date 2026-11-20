@@ -188,6 +188,7 @@ export function FenologiaClient({
   // Stats
   const totalAplicaciones = aplsFiltradas.length
   const lotesSinSiembra   = lotesFiltrados.filter(l => !l.fecha_siembra).length
+  const totalLotesCampana = lotesActuales.length
 
   return (
     <div className="p-6 space-y-6 animate-fade-in">
@@ -236,8 +237,22 @@ export function FenologiaClient({
       {grupos.length === 0 ? (
         <div className="card p-10 text-center">
           <p className="text-4xl mb-3">🌱</p>
-          <p className="font-bold text-hi">No hay lotes con siembra registrada esta campaña</p>
-          <p className="text-sm text-mid mt-1">Cargá las fechas de siembra desde cada lote para ver la fenología.</p>
+          {totalLotesCampana === 0 ? (
+            <>
+              <p className="font-bold text-hi">No hay lotes cargados en esta campaña</p>
+              <p className="text-sm text-mid mt-1">Cargá lotes desde la sección de cada productor.</p>
+            </>
+          ) : lotesSinSiembra === totalLotesCampana ? (
+            <>
+              <p className="font-bold text-hi">Hay {totalLotesCampana} lote{totalLotesCampana > 1 ? 's' : ''} sin fecha de siembra</p>
+              <p className="text-sm text-mid mt-1">Cargá las siembras desde el módulo <strong>Siembra</strong> para ver la línea de tiempo.</p>
+            </>
+          ) : (
+            <>
+              <p className="font-bold text-hi">No hay lotes que coincidan con los filtros</p>
+              <p className="text-sm text-mid mt-1">Probá cambiando el productor o cultivo.</p>
+            </>
+          )}
         </div>
       ) : (
         <div className="space-y-8">
