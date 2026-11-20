@@ -1,7 +1,7 @@
 'use client';
 import { useState } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
 import { logout } from '@/app/(auth)/login/actions';
 
 type Campana   = { id: string; nombre: string; fecha_inicio: string; fecha_fin: string };
@@ -113,6 +113,8 @@ export function AppHeader({
   onCampanaChange: (id: string) => void;
 }) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const campanaParam = searchParams.get('campana') ?? campanaActivaId;
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
 
@@ -180,10 +182,11 @@ export function AppHeader({
           <p className="px-3 pb-2 text-[10px] font-black uppercase tracking-wider" style={{ color: '#404040' }}>Módulos</p>
           {NAV.map(({ href, label, icon: Icon }) => {
             const active = pathname === href || (href !== '/dashboard' && pathname.startsWith(href));
+            const hrefConCampana = campanaParam ? `${href}?campana=${campanaParam}` : href;
             return (
               <Link
                 key={href}
-                href={href}
+                href={hrefConCampana}
                 onClick={() => setSidebarOpen(false)}
                 className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-black transition-all duration-150 group"
                 style={active

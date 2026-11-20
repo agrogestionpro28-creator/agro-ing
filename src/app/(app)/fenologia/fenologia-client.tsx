@@ -140,9 +140,9 @@ export function FenologiaClient({
   const [filtroCultivo, setFiltroCultivo] = useState('todos')
   const [filtroProductor, setFiltroProductor] = useState('todos')
 
-  // Lotes de la campaña actual
+  // Lotes de la campaña actual (si no hay campaña seleccionada, muestra todos)
   const lotesActuales = useMemo(
-    () => lotes.filter(l => l.campana_id === campanaId),
+    () => campanaId ? lotes.filter(l => l.campana_id === campanaId) : lotes,
     [lotes, campanaId]
   )
 
