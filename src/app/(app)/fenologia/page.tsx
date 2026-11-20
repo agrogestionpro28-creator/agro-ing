@@ -18,11 +18,21 @@ export default async function FenologiaPage() {
 
   const prodIds = (productores ?? []).map((p: any) => p.id)
 
-  const { data: lotes } = prodIds.length
+  // Traer lotes: primero por productor_id, si no hay resultados buscar por campana del ingeniero
+  let { data: lotes } = prodIds.length
     ? await (sb as any).from('lotes')
         .select('id,nombre,hectareas,cultivo,cultivo_2,variedad,tecnologia_soja,productor_id,campana_id,fecha_siembra,fecha_cosecha')
         .in('productor_id', prodIds)
     : { data: [] }
+
+  // Fallback: si no hay lotes por productor, buscar por campanas del ingeniero
+  if ((!lotes || lotes.length === 0) && campanas && campanas.length > 0) {
+    const campanaIds = (campanas as any[]).map((c: any) => c.id)
+    const { data: lotesPorCampana } = await (sb as any).from('lotes')
+      .select('id,nombre,hectareas,cultivo,cultivo_2,variedad,tecnologia_soja,productor_id,campana_id,fecha_siembra,fecha_cosecha')
+      .in('campana_id', campanaIds)
+    lotes = lotesPorCampana
+  }
 
   const loteIds = (lotes ?? []).map((l: any) => l.id)
 
