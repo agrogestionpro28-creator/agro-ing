@@ -199,32 +199,39 @@ export function CosechaClient({
   }
 
   return (
-    <div className="p-6 space-y-6 animate-fade-in">
+    <div className="max-w-6xl mx-auto px-4 py-6 space-y-5 animate-fade-in">
       {/* Header */}
-      <div className="flex flex-wrap items-end justify-between gap-4">
+      <div className="flex items-start justify-between flex-wrap gap-3">
         <div>
-          <p className="eyebrow">Cosecha</p>
-          <h1 className="text-2xl font-black tracking-tight mt-1" style={{ color: '#0f172a' }}>Rindes de cosecha</h1>
-          <p className="text-sm text-mid mt-0.5">Cargá lote por lote. Comparativas automáticas por cultivo y productor.</p>
+          <p className="eyebrow mb-0.5">Cosecha</p>
+          <h1 className="text-2xl font-black text-hi tracking-tight">Rindes de cosecha</h1>
+          <p className="text-lo text-sm mt-0.5">Cargá lote por lote. Comparativas automáticas por cultivo y productor.</p>
         </div>
-        <div className="flex items-center gap-3 flex-wrap">
-          {cosechasActuales.length > 0 && (
-            <select
-              value={filtroGlobal}
-              onChange={e => setFiltroGlobal(e.target.value)}
-              className="field py-1.5 text-sm min-w-[160px]"
-            >
-              <option value="">Todos los cultivos</option>
-              {[...new Set(cosechasActuales.map(c => c.cultivo))].sort().map(c => (
-                <option key={c} value={c}>{c}</option>
-              ))}
-            </select>
-          )}
-          <button className="btn-primary" onClick={() => { setShowForm(v => !v); setEditando(null); setPreloadForm(null); setSugerencia2doCultivo(null); }}>
-            {showForm ? 'Cerrar' : '+ Cargar rinde'}
-          </button>
-        </div>
+        <button className="btn-primary" onClick={() => { setShowForm(v => !v); setEditando(null); setPreloadForm(null); setSugerencia2doCultivo(null); }}>
+          {showForm ? 'Cerrar' : '+ Cargar rinde'}
+        </button>
       </div>
+
+      {/* Filtros — mismo estilo Siembra */}
+      {cosechasActuales.length > 0 && (
+        <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
+          <div className="flex flex-wrap gap-3 items-end">
+            <div className="flex flex-col gap-1">
+              <label className="text-[11px] font-bold uppercase tracking-wider text-mid">Cultivo</label>
+              <select
+                value={filtroGlobal}
+                onChange={e => setFiltroGlobal(e.target.value)}
+                className="field py-1.5 text-sm min-w-[160px]"
+              >
+                <option value="">Todos los cultivos</option>
+                {[...new Set(cosechasActuales.map(c => c.cultivo))].sort().map(c => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Banner sugerencia segundo cultivo */}
       {sugerencia2doCultivo && (() => {
@@ -285,8 +292,8 @@ export function CosechaClient({
       )}
 
       {cosechasActuales.length === 0 && !showForm && (
-        <div className="card p-10 text-center">
-          <p className="text-4xl mb-3">🌾</p>
+        <div className="bg-white border border-slate-200 rounded-xl p-12 text-center space-y-2 shadow-sm">
+          <p className="text-4xl">🌾</p>
           <p className="font-bold text-hi">Todavía no hay cosechas cargadas esta campaña</p>
           <p className="text-sm text-mid mt-1">Usá "+ Cargar rinde" para sumar la primera.</p>
         </div>
@@ -294,24 +301,23 @@ export function CosechaClient({
 
       {cosechasActuales.length > 0 && (
         <>
-          {/* KPIs */}
+          {/* KPIs — mismo estilo Siembra */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {[
-              { val: stats.n, label: 'Lotes cosechados', sub: 'con rinde cargado', accent: '#0ea87a' },
-              { val: stats.totalHa > 0 ? fmt(stats.totalHa, 0) : '—', label: 'Hectáreas', sub: 'cosechadas', accent: '#0284c7' },
-              { val: stats.promKgHa ? fmt(stats.promKgHa, 0) : '—', label: 'Rinde promedio', sub: 'kg/ha general', accent: '#ca8a04' },
-              { val: stats.totalTn > 0 ? fmt(stats.totalTn, 1) : '—', label: 'Producción total', sub: 'toneladas', accent: '#475569' },
-            ].map(({ val, label, sub, accent }) => (
-              <div key={label} className="card p-4 relative overflow-hidden">
+              { val: stats.n, label: 'Lotes cosechados', accent: '#0ea87a' },
+              { val: stats.totalHa > 0 ? fmt(stats.totalHa, 0) : '—', label: 'Hectáreas', accent: '#0284c7' },
+              { val: stats.promKgHa ? fmt(stats.promKgHa, 0) : '—', label: 'Rinde prom. kg/ha', accent: '#ca8a04' },
+              { val: stats.totalTn > 0 ? fmt(stats.totalTn, 1) : '—', label: 'Toneladas totales', accent: '#475569' },
+            ].map(({ val, label, accent }) => (
+              <div key={label} className="bg-white border border-slate-200 rounded-xl p-4 relative overflow-hidden shadow-sm">
                 <div className="absolute left-0 top-3 bottom-3 w-0.5 rounded-full" style={{ background: accent }} />
                 <p className="text-3xl font-black tabular-nums" style={{ color: accent }}>{val}</p>
-                <p className="text-sm font-black mt-1" style={{ color: '#0f172a' }}>{label}</p>
-                <p className="text-xs mt-0.5 font-semibold text-mid">{sub}</p>
+                <p className="text-xs font-bold mt-1 text-mid uppercase tracking-wider">{label}</p>
               </div>
             ))}
           </div>
 
-          {/* Tabs */}
+          {/* Tabs — mismo estilo Siembra */}
           <div className="flex gap-1 p-1 rounded-xl bg-slate-100 w-fit">
             {([
               { id: 'resumen', label: 'Resumen' },
@@ -754,7 +760,7 @@ function FormCosecha({
   const prodEditDisplay = loteEditDisplay ? productores.find(p => p.id === loteEditDisplay.productor_id) : null;
 
   return (
-    <form onSubmit={guardar} className="card p-5 space-y-4" style={st2 ? { borderLeft: `4px solid ${st2.strip}` } : undefined}>
+    <form onSubmit={guardar} className="bg-white border border-slate-200 rounded-2xl p-5 space-y-4 shadow-sm" style={st2 ? { borderLeft: `4px solid ${st2.strip}` } : undefined}>
       {editando && stEdit ? (
         <div className="flex items-center gap-3">
           <span className="text-lg">✏️</span>
