@@ -226,6 +226,13 @@ export function FenologiaClient({
         </select>
       </div>
 
+      {/* Debug temporal */}
+      {process.env.NODE_ENV !== 'production' || true ? (
+        <div className="text-xs text-mid bg-yellow-50 border border-yellow-200 rounded-lg p-3 font-mono">
+          lotes total: {lotes.length} | campaña actual: {lotesActuales.length} | cultivos: [{cultivosUnicos.join(', ')}] | grupos: {grupos.length}
+        </div>
+      ) : null}
+
       {/* Referencia tipos */}
       <div className="flex flex-wrap gap-2">
         {Object.entries(TIPO_COLOR).map(([tipo, st]) => (
