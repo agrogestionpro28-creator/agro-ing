@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useCampana } from '@/components/layout/app-shell';
-import { cn, fmtFecha } from '@/lib/utils';
+import { fmtFecha } from '@/lib/utils';
 
 // ── Tipos ─────────────────────────────────────────────────
 type Productor = { id: string; razon_social: string };
@@ -21,6 +21,23 @@ type Cosecha   = {
   observaciones: string | null;
   created_at: string;
 };
+
+// Fila para carga masiva tipo planilla
+type FilaCosecha = {
+  lote_id: string
+  lote_nombre: string
+  hectareas: number
+  productor_nombre: string
+  cultivo: string
+  cosecha_id: string | null    // null = no existe aún
+  fecha_cosecha: string
+  rinde_kg_ha: string
+  humedad_pct: string
+  observaciones: string
+  sucio: boolean
+  guardando: boolean
+  ok: boolean
+}
 
 // ── Colores por cultivo ───────────────────────────────────
 const CULT_STYLE: Record<string, { strip: string; badge: string; text: string; border: string }> = {
@@ -52,6 +69,7 @@ function rindeStd(kg_ha: number, hum: number, cultivo: string): number {
 function fmt(n: number, dec = 1) {
   return n.toLocaleString('es-AR', { minimumFractionDigits: dec, maximumFractionDigits: dec });
 }
+function num(s: string) { const v = parseFloat(s.replace(',', '.')); return isNaN(v) ? null : v; }
 
 // Tabs de vista
 type Tab = 'resumen' | 'cultivo' | 'lotes';
@@ -66,17 +84,20 @@ export function CosechaClient({
   cosechas:    Cosecha[];
   userId:      string;
 }) {
+  const sb = createClient() as any;
   const { campanaId } = useCampana();
   const [cosechas, setCosechas] = useState<Cosecha[]>(cosechasInit);
   const [tab, setTab] = useState<Tab>('resumen');
-  const [showForm, setShowForm] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  const [filtroGlobal, setFiltroGlobal] = useState('');
   const [filtroCultivo, setFiltroCultivo] = useState('');
   const [filtroProductor, setFiltroProductor] = useState('');
-  const [filtroGlobal, setFiltroGlobal] = useState(''); // filtro que aplica a todas las tabs
-  const [sugerencia2doCultivo, setSugerencia2doCultivo] = useState<{ lote: Lote; cultivo2: string } | null>(null);
-  const [preloadForm, setPreloadForm] = useState<{ loteId: string; productorId: string; cultivo: string } | null>(null);
-  const [editando, setEditando] = useState<Cosecha | null>(null);
+
+  // Modo carga masiva
+  const [modoCarga, setModoCarga] = useState(false);
+  const [cultivoCarga, setCultivoCarga] = useState('');
+  const [filasCarga, setFilasCarga] = useState<FilaCosecha[]>([]);
+  const [guardandoTodo, setGuardandoTodo] = useState(false);
 
   // Lotes de la campaña actual
   const lotesActuales = useMemo(() => lotes.filter(l => l.campana_id === campanaId), [lotes, campanaId]);
@@ -88,32 +109,41 @@ export function CosechaClient({
     [cosechas, lotesIds]
   );
 
-  // Cosechas filtradas por cultivo global (aplica a todas las tabs excepto "Todos los lotes" que tiene sus propios filtros)
+  // Cultivos disponibles en lotes actuales (para el selector de carga masiva)
+  const cultivosEnLotes = useMemo(() => {
+    const set = new Set<string>();
+    for (const l of lotesActuales) {
+      if (l.cultivo) set.add(l.cultivo);
+      if (l.cultivo_2) set.add(l.cultivo_2);
+    }
+    return [...set].sort();
+  }, [lotesActuales]);
+
+  // Cosechas filtradas por cultivo global
   const cosechasGlobal = useMemo(
     () => filtroGlobal ? cosechasActuales.filter(c => c.cultivo === filtroGlobal) : cosechasActuales,
     [cosechasActuales, filtroGlobal]
   );
 
-  // Enriquecer cosechas con datos del lote y productor
+  // Enriquecer cosechas
   const enriched = useMemo(() => cosechasGlobal.map(c => {
     const lote = lotesActuales.find(l => l.id === c.lote_id);
     const prod = productores.find(p => p.id === lote?.productor_id);
     return { ...c, lote, prod };
   }), [cosechasGlobal, lotesActuales, productores]);
 
-  // Filtrados
+  // Filtrados (tab Todos los lotes)
   const filtrados = useMemo(() => enriched.filter(c =>
     (!filtroCultivo || c.cultivo === filtroCultivo) &&
     (!filtroProductor || c.prod?.id === filtroProductor)
   ), [enriched, filtroCultivo, filtroProductor]);
 
-  // Cultivos únicos con cosechas
   const cultivosConCosecha = useMemo(() =>
     [...new Set(cosechasActuales.map(c => c.cultivo))].sort(),
     [cosechasActuales]
   );
 
-  // Estadísticas globales
+  // Stats globales
   const stats = useMemo(() => {
     const cosHaVal = filtrados.filter(c => c.rinde_kg_ha && c.lote?.hectareas);
     const totalHa  = cosHaVal.reduce((s, c) => s + Number(c.lote!.hectareas), 0);
@@ -122,7 +152,7 @@ export function CosechaClient({
     return { totalHa, promKgHa, totalTn, n: filtrados.length };
   }, [filtrados]);
 
-  // Por cultivo (para tab "Por cultivo")
+  // Por cultivo
   const porCultivo = useMemo(() => {
     const grupos: Record<string, typeof enriched> = {};
     for (const c of enriched) {
@@ -142,505 +172,643 @@ export function CosechaClient({
     }).sort((a, b) => (b.totalHa || 0) - (a.totalHa || 0));
   }, [enriched]);
 
-  function onEditar(c: Cosecha) {
-    setEditando(c);
-    setSugerencia2doCultivo(null);
-    setPreloadForm(null);
-    setShowForm(true);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  }
+  // ── Carga masiva ─────────────────────────────────────────
+  function abrirCarga(cultivo: string) {
+    setCultivoCarga(cultivo);
+    setModoCarga(true);
 
-  async function onGuardado(nueva: Cosecha) {
-    const cosechasActualizadas = [nueva, ...cosechas.filter(c => c.id !== nueva.id)];
-    setCosechas(cosechasActualizadas);
-    setShowForm(false);
-    setPreloadForm(null);
-    setEditando(null);
+    // Buscar lotes que tienen este cultivo (principal o secundario)
+    const prodMap: Record<string, string> = {};
+    productores.forEach(p => { prodMap[p.id] = p.razon_social; });
 
-    // Verificar si el lote tiene cultivo_2 y no tiene cosecha de ese cultivo aún (solo en carga nueva, no edición)
-    const eraEdicion = cosechas.some(c => c.id === nueva.id);
-    const lote = lotesActuales.find(l => l.id === nueva.lote_id);
-    if (!eraEdicion && lote?.cultivo_2) {
-      const yaExiste = cosechasActualizadas.some(
-        c => c.lote_id === lote.id && c.cultivo === lote.cultivo_2
-      );
-      if (!yaExiste) {
-        setSugerencia2doCultivo({ lote, cultivo2: lote.cultivo_2 });
-        return; // No mostrar toast aún, lo mostrará al aceptar/rechazar
-      }
+    const filas: FilaCosecha[] = [];
+    for (const l of lotesActuales) {
+      const esPrincipal = l.cultivo === cultivo;
+      const esSecundario = l.cultivo_2 === cultivo;
+      if (!esPrincipal && !esSecundario) continue;
+
+      // Buscar si ya tiene cosecha de este cultivo
+      const cosechaExistente = cosechasActuales.find(c => c.lote_id === l.id && c.cultivo === cultivo);
+
+      filas.push({
+        lote_id: l.id,
+        lote_nombre: l.nombre,
+        hectareas: l.hectareas,
+        productor_nombre: prodMap[l.productor_id] ?? '—',
+        cultivo,
+        cosecha_id: cosechaExistente?.id ?? null,
+        fecha_cosecha: cosechaExistente?.fecha_cosecha ?? new Date().toISOString().slice(0, 10),
+        rinde_kg_ha: cosechaExistente?.rinde_kg_ha != null ? String(cosechaExistente.rinde_kg_ha) : '',
+        humedad_pct: cosechaExistente?.humedad_pct != null ? String(cosechaExistente.humedad_pct) : '',
+        observaciones: cosechaExistente?.observaciones ?? '',
+        sucio: false,
+        guardando: false,
+        ok: false,
+      });
     }
 
-    setToast(eraEdicion ? 'Cosecha actualizada ✓' : 'Cosecha guardada ✓');
-    setTimeout(() => setToast(null), 2000);
+    // Ordenar: sin rinde primero, luego por productor
+    filas.sort((a, b) => {
+      if (!a.rinde_kg_ha && b.rinde_kg_ha) return -1;
+      if (a.rinde_kg_ha && !b.rinde_kg_ha) return 1;
+      return a.productor_nombre.localeCompare(b.productor_nombre) || a.lote_nombre.localeCompare(b.lote_nombre);
+    });
+
+    setFilasCarga(filas);
   }
 
-  function aceptarSegundoCultivo() {
-    if (!sugerencia2doCultivo) return;
-    const { lote, cultivo2 } = sugerencia2doCultivo;
-    setSugerencia2doCultivo(null);
-    setPreloadForm({ loteId: lote.id, productorId: lote.productor_id, cultivo: cultivo2 });
-    setShowForm(true);
-    setToast('Cosecha guardada ✓');
-    setTimeout(() => setToast(null), 2000);
+  function cerrarCarga() {
+    setModoCarga(false);
+    setCultivoCarga('');
+    setFilasCarga([]);
   }
 
-  function rechazarSegundoCultivo() {
-    setSugerencia2doCultivo(null);
-    setToast('Cosecha guardada ✓');
-    setTimeout(() => setToast(null), 2000);
+  function setFila(loteId: string, campo: Partial<FilaCosecha>) {
+    setFilasCarga(fs => fs.map(f =>
+      f.lote_id === loteId ? { ...f, ...campo, sucio: true, ok: false } : f
+    ));
+  }
+
+  async function guardarFila(loteId: string) {
+    const fila = filasCarga.find(f => f.lote_id === loteId);
+    if (!fila || (!fila.rinde_kg_ha && !fila.fecha_cosecha)) return;
+    setFilasCarga(fs => fs.map(f => f.lote_id === loteId ? { ...f, guardando: true } : f));
+
+    const rinde = num(fila.rinde_kg_ha);
+    const hum   = num(fila.humedad_pct);
+    const std   = rinde && hum ? Math.round(rindeStd(rinde, hum, fila.cultivo)) : null;
+
+    const row = {
+      lote_id: loteId,
+      ingeniero_id: userId,
+      cultivo: fila.cultivo,
+      fecha_cosecha: fila.fecha_cosecha || null,
+      rinde_kg_ha: rinde,
+      humedad_pct: hum,
+      rinde_std_kg_ha: std,
+      observaciones: fila.observaciones || null,
+    };
+
+    try {
+      let saved: Cosecha;
+      if (fila.cosecha_id) {
+        const { data } = await sb.from('cosechas').update(row).eq('id', fila.cosecha_id).select().single();
+        saved = data;
+      } else {
+        const { data } = await sb.from('cosechas').insert(row).select().single();
+        saved = data;
+        // Actualizar cosecha_id en la fila
+        setFilasCarga(fs => fs.map(f => f.lote_id === loteId ? { ...f, cosecha_id: saved.id } : f));
+      }
+      // Actualizar estado global de cosechas
+      setCosechas(prev => [saved, ...prev.filter(c => c.id !== saved.id)]);
+      setFilasCarga(fs => fs.map(f =>
+        f.lote_id === loteId ? { ...f, guardando: false, sucio: false, ok: true } : f
+      ));
+      setTimeout(() => setFilasCarga(fs => fs.map(f =>
+        f.lote_id === loteId ? { ...f, ok: false } : f
+      )), 2000);
+    } catch {
+      setFilasCarga(fs => fs.map(f => f.lote_id === loteId ? { ...f, guardando: false } : f));
+    }
+  }
+
+  async function guardarTodo() {
+    setGuardandoTodo(true);
+    const sucias = filasCarga.filter(f => f.sucio && f.rinde_kg_ha);
+    await Promise.all(sucias.map(f => guardarFila(f.lote_id)));
+    setGuardandoTodo(false);
+    setToast(`${sucias.length} registros guardados ✓`);
+    setTimeout(() => setToast(null), 2500);
   }
 
   async function onEliminar(id: string) {
     if (!confirm('¿Eliminar este registro de cosecha?')) return;
-    await (createClient() as any).from('cosechas').delete().eq('id', id);
+    await sb.from('cosechas').delete().eq('id', id);
     setCosechas(prev => prev.filter(c => c.id !== id));
     setToast('Eliminado');
     setTimeout(() => setToast(null), 1800);
   }
 
+  const haysucios = filasCarga.some(f => f.sucio && f.rinde_kg_ha);
+  const cs = cultStyle(cultivoCarga);
+
   return (
     <div className="max-w-6xl mx-auto px-4 py-6 space-y-5 animate-fade-in">
+
       {/* Header */}
       <div className="flex items-start justify-between flex-wrap gap-3">
         <div>
           <p className="eyebrow mb-0.5">Cosecha</p>
           <h1 className="text-2xl font-black text-hi tracking-tight">Rindes de cosecha</h1>
-          <p className="text-lo text-sm mt-0.5">Cargá lote por lote. Comparativas automáticas por cultivo y productor.</p>
+          <p className="text-lo text-sm mt-0.5">Seleccioná un cultivo y cargá los rindes de todos los lotes a la vez.</p>
         </div>
-        <button className="btn-primary" onClick={() => { setShowForm(v => !v); setEditando(null); setPreloadForm(null); setSugerencia2doCultivo(null); }}>
-          {showForm ? 'Cerrar' : '+ Cargar rinde'}
-        </button>
+        {modoCarga && (
+          <button onClick={cerrarCarga} className="btn-secondary">
+            ← Volver
+          </button>
+        )}
       </div>
 
-      {/* Filtros — mismo estilo Siembra */}
-      {cosechasActuales.length > 0 && (
-        <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
-          <div className="flex flex-wrap gap-3 items-end">
-            <div className="flex flex-col gap-1">
-              <label className="text-[11px] font-bold uppercase tracking-wider text-mid">Cultivo</label>
-              <select
-                value={filtroGlobal}
-                onChange={e => setFiltroGlobal(e.target.value)}
-                className="field py-1.5 text-sm min-w-[160px]"
-              >
-                <option value="">Todos los cultivos</option>
-                {[...new Set(cosechasActuales.map(c => c.cultivo))].sort().map(c => (
-                  <option key={c} value={c}>{c}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Banner sugerencia segundo cultivo */}
-      {sugerencia2doCultivo && (() => {
-        const { lote, cultivo2 } = sugerencia2doCultivo;
-        const st = cultStyle(cultivo2);
-        const prod = productores.find(p => p.id === lote.productor_id);
-        return (
+      {/* ── MODO CARGA MASIVA ── */}
+      {modoCarga && (
+        <div className="space-y-4">
+          {/* Header del cultivo */}
           <div
-            className="rounded-2xl border-2 p-5 flex flex-col sm:flex-row sm:items-center gap-4"
-            style={{ background: st.badge, borderColor: st.border }}
+            className="rounded-2xl border-2 px-5 py-4 flex items-center justify-between gap-4 flex-wrap"
+            style={{ background: cs.badge, borderColor: cs.border }}
           >
-            <div className="flex-1">
-              <p className="text-xs font-black uppercase tracking-widest mb-1" style={{ color: st.text }}>
-                🌱 Segundo cultivo disponible
-              </p>
-              <p className="font-black text-base" style={{ color: '#0f172a' }}>
-                {lote.nombre}
-                <span className="ml-2 text-sm font-semibold" style={{ color: '#475569' }}>
-                  · {prod?.razon_social}
-                </span>
-              </p>
-              <p className="text-sm mt-1" style={{ color: '#475569' }}>
-                El lote fue cosechado. Ahora está libre para el{' '}
-                <strong style={{ color: st.text }}>{cultivo2}</strong> de segunda.
-                ¿Querés cargar el rinde?
-              </p>
+            <div className="flex items-center gap-3">
+              <div className="w-3 h-3 rounded-full" style={{ background: cs.strip }} />
+              <h2 className="text-lg font-black" style={{ color: cs.text }}>{cultivoCarga}</h2>
+              <span className="text-sm font-semibold" style={{ color: cs.text, opacity: 0.7 }}>
+                {filasCarga.length} lotes · {filasCarga.filter(f => f.rinde_kg_ha).length} con rinde
+              </span>
             </div>
-            <div className="flex gap-2 shrink-0">
-              <button
-                onClick={aceptarSegundoCultivo}
-                className="px-4 py-2 rounded-xl text-sm font-black transition-all"
-                style={{ background: st.strip, color: '#fff' }}
-              >
-                Cargar {cultivo2}
-              </button>
-              <button
-                onClick={rechazarSegundoCultivo}
-                className="px-4 py-2 rounded-xl text-sm font-semibold transition-all"
-                style={{ background: '#f1f5f9', color: '#64748b' }}
-              >
-                Ahora no
-              </button>
-            </div>
-          </div>
-        );
-      })()}
-
-      {/* Formulario */}
-      {showForm && (
-        <FormCosecha
-          productores={productores}
-          lotes={lotesActuales}
-          userId={userId}
-          onGuardado={onGuardado}
-          preload={preloadForm ?? undefined}
-          editando={editando ?? undefined}
-        />
-      )}
-
-      {cosechasActuales.length === 0 && !showForm && (
-        <div className="bg-white border border-slate-200 rounded-xl p-12 text-center space-y-2 shadow-sm">
-          <p className="text-4xl">🌾</p>
-          <p className="font-bold text-hi">Todavía no hay cosechas cargadas esta campaña</p>
-          <p className="text-sm text-mid mt-1">Usá "+ Cargar rinde" para sumar la primera.</p>
-        </div>
-      )}
-
-      {cosechasActuales.length > 0 && (
-        <>
-          {/* KPIs — mismo estilo Siembra */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            {[
-              { val: stats.n, label: 'Lotes cosechados', accent: '#0ea87a' },
-              { val: stats.totalHa > 0 ? fmt(stats.totalHa, 0) : '—', label: 'Hectáreas', accent: '#0284c7' },
-              { val: stats.promKgHa ? fmt(stats.promKgHa, 0) : '—', label: 'Rinde prom. kg/ha', accent: '#ca8a04' },
-              { val: stats.totalTn > 0 ? fmt(stats.totalTn, 1) : '—', label: 'Toneladas totales', accent: '#475569' },
-            ].map(({ val, label, accent }) => (
-              <div key={label} className="bg-white border border-slate-200 rounded-xl p-4 relative overflow-hidden shadow-sm">
-                <div className="absolute left-0 top-3 bottom-3 w-0.5 rounded-full" style={{ background: accent }} />
-                <p className="text-3xl font-black tabular-nums" style={{ color: accent }}>{val}</p>
-                <p className="text-xs font-bold mt-1 text-mid uppercase tracking-wider">{label}</p>
-              </div>
-            ))}
-          </div>
-
-          {/* Tabs — mismo estilo Siembra */}
-          <div className="flex gap-1 p-1 rounded-xl bg-slate-100 w-fit">
-            {([
-              { id: 'resumen', label: 'Resumen' },
-              { id: 'cultivo', label: 'Por cultivo' },
-              { id: 'lotes',   label: 'Todos los lotes' },
-            ] as const).map(t => (
-              <button
-                key={t.id}
-                onClick={() => setTab(t.id)}
-                className="px-4 py-2 rounded-lg text-sm font-bold transition-all duration-150"
-                style={tab === t.id
-                  ? { background: '#ffffff', color: '#0f172a', boxShadow: '0 1px 4px rgba(0,0,0,0.10)' }
-                  : { color: '#64748b' }
+            {haysucios && (
+              <button onClick={guardarTodo} disabled={guardandoTodo} className="btn-primary">
+                {guardandoTodo
+                  ? <><span className="animate-spin inline-block">⏳</span> Guardando...</>
+                  : <>💾 Guardar todo <span className="bg-white/20 rounded px-1.5 py-0.5 text-[10px] font-black">{filasCarga.filter(f => f.sucio && f.rinde_kg_ha).length}</span></>
                 }
-              >
-                {t.label}
               </button>
-            ))}
+            )}
           </div>
 
-          {/* Tab Resumen */}
-          {tab === 'resumen' && (
-            <div className="space-y-4">
-              <p className="text-xs font-bold tracking-widest uppercase text-mid">Estado por cultivo</p>
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                {porCultivo.map(g => {
-                  const st = cultStyle(g.cultivo);
+          {/* Tabla */}
+          <div className="bg-white border border-slate-200 rounded-2xl overflow-x-auto shadow-sm">
+            <table className="w-full border-collapse min-w-[700px]">
+              <thead>
+                <tr className="border-b border-slate-100">
+                  <th className="text-left py-3 px-4 text-[10px] font-bold uppercase tracking-wider text-mid bg-slate-50/80">Productor / Lote</th>
+                  <th className="text-center py-3 px-2 text-[10px] font-bold uppercase tracking-wider text-mid bg-slate-50/80 w-12">Ha</th>
+                  <th className="text-left py-3 px-3 text-[10px] font-bold uppercase tracking-wider text-mid bg-slate-50/80 w-[140px]">Fecha cosecha</th>
+                  <th className="text-left py-3 px-3 text-[10px] font-bold uppercase tracking-wider text-mid bg-slate-50/80 w-[120px]">Rinde kg/ha</th>
+                  <th className="text-left py-3 px-3 text-[10px] font-bold uppercase tracking-wider text-mid bg-slate-50/80 w-[100px]">Humedad %</th>
+                  <th className="text-left py-3 px-3 text-[10px] font-bold uppercase tracking-wider text-mid bg-slate-50/80 w-[100px]">Std kg/ha</th>
+                  <th className="text-left py-3 px-3 text-[10px] font-bold uppercase tracking-wider text-mid bg-slate-50/80">Obs.</th>
+                  <th className="bg-slate-50/80 w-20" />
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {filasCarga.map(fila => {
+                  const rindeN = num(fila.rinde_kg_ha);
+                  const humN   = num(fila.humedad_pct);
+                  const std    = rindeN && humN ? Math.round(rindeStd(rindeN, humN, fila.cultivo)) : null;
+                  const tieneRinde = !!fila.cosecha_id || !!fila.rinde_kg_ha;
+
                   return (
-                    <div key={g.cultivo} className="bg-white rounded-xl border-2 overflow-hidden" style={{ borderColor: st.border }}>
-                      <div className="flex items-center gap-3 px-4 py-3" style={{ background: st.badge }}>
-                        <div className="w-3 h-3 rounded-full" style={{ background: st.strip }} />
-                        <p className="font-black text-base" style={{ color: st.text }}>{g.cultivo}</p>
-                        <span className="text-xs font-semibold ml-auto" style={{ color: st.text, opacity: 0.7 }}>
-                          {fmt(g.totalHa, 0)} ha
-                        </span>
-                      </div>
-                      <div className="p-4 space-y-3">
-                        <div className="grid grid-cols-3 gap-2 text-center">
-                          <div>
-                            <p className="text-xl font-black tabular-nums" style={{ color: '#0f172a' }}>
-                              {g.promKgHa ? fmt(g.promKgHa, 0) : '—'}
-                            </p>
-                            <p className="text-[10px] text-mid font-semibold">kg/ha prom.</p>
-                          </div>
-                          <div>
-                            <p className="text-xl font-black tabular-nums text-afa">
-                              {fmt(g.totalTn, 1)}
-                            </p>
-                            <p className="text-[10px] text-mid font-semibold">t totales</p>
-                          </div>
-                          <div>
-                            <p className="text-xl font-black tabular-nums text-sky-600">
-                              {g.lotesCosechados}
-                              {g.lotesPendientes > 0 && <span className="text-sm text-mid">/{g.lotesCosechados + g.lotesPendientes}</span>}
-                            </p>
-                            <p className="text-[10px] text-mid font-semibold">lotes</p>
-                          </div>
+                    <tr
+                      key={fila.lote_id}
+                      className={`group transition-colors
+                        ${fila.ok ? 'bg-green-50/60' : ''}
+                        ${fila.sucio && !fila.ok ? 'bg-amber-50/60' : ''}
+                        hover:bg-slate-50/80
+                      `}
+                    >
+                      {/* Productor / Lote */}
+                      <td className="py-2 px-4">
+                        <p className="text-[10px] text-mid font-semibold leading-none mb-0.5">{fila.productor_nombre}</p>
+                        <div className="flex items-center gap-1.5">
+                          <span
+                            className="text-[9px] font-black px-1.5 py-0.5 rounded shrink-0"
+                            style={{ background: cs.strip, color: '#fff' }}
+                          >
+                            {fila.cultivo.slice(0, 3).toUpperCase()}
+                          </span>
+                          <p className="text-hi font-semibold text-xs">{fila.lote_nombre}</p>
+                          {!tieneRinde && <span className="text-[9px] text-red-400 font-bold">sin rinde</span>}
                         </div>
+                      </td>
 
-                        {/* Barra de rinde min-max-prom */}
-                        {g.minRinde != null && g.maxRinde != null && g.promKgHa != null && g.minRinde !== g.maxRinde && (
-                          <BarraRinde min={g.minRinde} max={g.maxRinde} prom={g.promKgHa} color={st.strip} />
-                        )}
+                      {/* Ha */}
+                      <td className="text-center py-2 px-2 text-mid text-xs font-mono">{fila.hectareas}</td>
 
-                        {g.lotesPendientes > 0 && (
-                          <p className="text-xs text-mid">{g.lotesPendientes} lote{g.lotesPendientes > 1 ? 's' : ''} sin rinde aún</p>
+                      {/* Fecha */}
+                      <td className="py-1.5 px-2">
+                        <input
+                          type="date"
+                          value={fila.fecha_cosecha}
+                          onChange={e => setFila(fila.lote_id, { fecha_cosecha: e.target.value })}
+                          className="field py-1.5 text-xs"
+                          style={{ minWidth: '128px' }}
+                        />
+                      </td>
+
+                      {/* Rinde */}
+                      <td className="py-1.5 px-2">
+                        <input
+                          type="text"
+                          inputMode="decimal"
+                          value={fila.rinde_kg_ha}
+                          onChange={e => setFila(fila.lote_id, { rinde_kg_ha: e.target.value })}
+                          placeholder="ej. 3200"
+                          className="field py-1.5 text-xs font-mono"
+                          style={{ minWidth: '90px' }}
+                        />
+                      </td>
+
+                      {/* Humedad */}
+                      <td className="py-1.5 px-2">
+                        <input
+                          type="text"
+                          inputMode="decimal"
+                          value={fila.humedad_pct}
+                          onChange={e => setFila(fila.lote_id, { humedad_pct: e.target.value })}
+                          placeholder="ej. 14.5"
+                          className="field py-1.5 text-xs font-mono"
+                          style={{ minWidth: '80px' }}
+                        />
+                      </td>
+
+                      {/* Std — calculado automático */}
+                      <td className="py-2 px-3">
+                        <span className="text-xs font-mono text-mid tabular-nums">
+                          {std ? fmt(std, 0) : '—'}
+                        </span>
+                      </td>
+
+                      {/* Observaciones */}
+                      <td className="py-1.5 px-2">
+                        <input
+                          type="text"
+                          value={fila.observaciones}
+                          onChange={e => setFila(fila.lote_id, { observaciones: e.target.value })}
+                          placeholder="opcional"
+                          className="field py-1.5 text-xs"
+                        />
+                      </td>
+
+                      {/* Acción */}
+                      <td className="py-1.5 px-3 text-center">
+                        {fila.guardando ? (
+                          <span className="text-mid text-xs animate-pulse">guardando</span>
+                        ) : fila.ok ? (
+                          <span className="inline-flex items-center gap-1 text-afa text-xs font-bold">
+                            <span>✓</span> Guardado
+                          </span>
+                        ) : fila.sucio ? (
+                          <button
+                            onClick={() => guardarFila(fila.lote_id)}
+                            className="text-xs font-bold text-amber-600 hover:text-hi bg-amber-50 hover:bg-amber-100 px-2.5 py-1 rounded-lg transition-all border border-amber-200"
+                          >
+                            Guardar
+                          </button>
+                        ) : (
+                          <span className="text-slate-300 text-xs opacity-0 group-hover:opacity-60 transition-opacity">—</span>
                         )}
-                      </div>
-                    </div>
+                      </td>
+                    </tr>
                   );
                 })}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Guardar todo al pie */}
+          {haysucios && filasCarga.length > 4 && (
+            <div className="flex justify-end">
+              <button onClick={guardarTodo} disabled={guardandoTodo} className="btn-primary">
+                {guardandoTodo ? 'Guardando...' : `💾 Guardar todo (${filasCarga.filter(f => f.sucio && f.rinde_kg_ha).length} cambios)`}
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── MODO NORMAL ── */}
+      {!modoCarga && (
+        <>
+          {/* Selector de cultivo para carga + filtro global */}
+          <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
+            <div className="flex flex-wrap gap-4 items-end">
+
+              {/* Cargar por cultivo */}
+              <div className="flex flex-col gap-1 flex-1 min-w-[220px]">
+                <label className="text-[11px] font-bold uppercase tracking-wider text-mid">Cargar rindes por cultivo</label>
+                <div className="flex gap-2">
+                  <select
+                    value={cultivoCarga}
+                    onChange={e => setCultivoCarga(e.target.value)}
+                    className="field py-1.5 text-sm flex-1"
+                  >
+                    <option value="">Seleccioná un cultivo…</option>
+                    {cultivosEnLotes.map(c => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                  <button
+                    onClick={() => cultivoCarga && abrirCarga(cultivoCarga)}
+                    disabled={!cultivoCarga}
+                    className="btn-primary py-1.5 px-4 text-sm disabled:opacity-40"
+                  >
+                    Cargar →
+                  </button>
+                </div>
               </div>
+
+              {/* Divisor */}
+              {cosechasActuales.length > 0 && (
+                <div className="w-px h-10 bg-slate-200 hidden sm:block" />
+              )}
+
+              {/* Filtro global para las tabs */}
+              {cosechasActuales.length > 0 && (
+                <div className="flex flex-col gap-1">
+                  <label className="text-[11px] font-bold uppercase tracking-wider text-mid">Filtrar vista</label>
+                  <select
+                    value={filtroGlobal}
+                    onChange={e => setFiltroGlobal(e.target.value)}
+                    className="field py-1.5 text-sm min-w-[160px]"
+                  >
+                    <option value="">Todos los cultivos</option>
+                    {cultivosConCosecha.map(c => (
+                      <option key={c} value={c}>{c}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Empty state */}
+          {cosechasActuales.length === 0 && (
+            <div className="bg-white border border-slate-200 rounded-xl p-12 text-center space-y-2 shadow-sm">
+              <p className="text-4xl">🌾</p>
+              <p className="font-bold text-hi">Todavía no hay cosechas cargadas esta campaña</p>
+              <p className="text-sm text-mid">Seleccioná un cultivo arriba y cargá los rindes.</p>
             </div>
           )}
 
-          {/* Tab Por cultivo */}
-          {tab === 'cultivo' && (
-            <div className="space-y-6">
-              {porCultivo.map(g => {
-                const st = cultStyle(g.cultivo);
-                // Ordenar por rinde desc para ranking
-                const ranking = [...g.conRinde].sort((a, b) => Number(b.rinde_kg_ha) - Number(a.rinde_kg_ha));
-                const maxR = ranking[0] ? Number(ranking[0].rinde_kg_ha) : 1;
-
-                return (
-                  <div key={g.cultivo} className="bg-white rounded-xl border-2 overflow-hidden" style={{ borderColor: st.border }}>
-                    <div className="flex items-center gap-3 px-5 py-3.5" style={{ background: st.badge, borderBottom: `1px solid ${st.border}30` }}>
-                      <div className="w-3 h-3 rounded-full" style={{ background: st.strip }} />
-                      <h2 className="text-lg font-black" style={{ color: st.text }}>{g.cultivo}</h2>
-                      <span className="text-sm font-semibold" style={{ color: st.text, opacity: 0.7 }}>
-                        {g.lotesCosechados} lotes · {fmt(g.totalHa, 0)} ha · {fmt(g.totalTn, 1)} t
-                      </span>
-                      {g.promKgHa && (
-                        <span className="ml-auto text-sm font-black px-3 py-0.5 rounded-full" style={{ background: st.badge, color: st.text, border: `1px solid ${st.border}60` }}>
-                          Prom: {fmt(g.promKgHa, 0)} kg/ha
-                        </span>
-                      )}
-                    </div>
-
-                    <div className="p-5">
-                      {/* Ranking visual */}
-                      <p className="text-xs font-bold tracking-widest uppercase text-mid mb-3">Ranking de lotes</p>
-                      <div className="space-y-2">
-                        {ranking.map((c, i) => {
-                          const pct = maxR > 0 ? (Number(c.rinde_kg_ha) / maxR) * 100 : 0;
-                          return (
-                            <div key={c.id} className="flex items-center gap-3">
-                              <span className="text-xs font-black tabular-nums w-5 text-mid">{i + 1}</span>
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center justify-between gap-2 mb-0.5">
-                                  <span className="text-xs font-black truncate" style={{ color: '#0f172a' }}>
-                                    {c.lote?.nombre}
-                                    <span className="font-semibold text-mid"> · {c.prod?.razon_social}</span>
-                                  </span>
-                                  <div className="flex items-center gap-2 shrink-0">
-                                    <span className="text-sm font-black tabular-nums" style={{ color: st.text }}>
-                                      {fmt(Number(c.rinde_kg_ha), 0)} kg/ha
-                                    </span>
-                                    <span className="text-xs text-mid font-mono">
-                                      {c.lote?.hectareas ? `${fmt(Number(c.rinde_kg_ha) * Number(c.lote.hectareas) / 1000, 1)} t` : ''}
-                                    </span>
-                                  </div>
-                                </div>
-                                <div className="h-2 rounded-full overflow-hidden" style={{ background: '#f1f5f9' }}>
-                                  <div
-                                    className="h-full rounded-full transition-all duration-500"
-                                    style={{ width: `${pct}%`, background: st.strip }}
-                                  />
-                                </div>
-                              </div>
-                              <button
-                                onClick={() => onEliminar(c.id)}
-                                className="text-mid hover:text-danger transition-colors text-xs shrink-0"
-                                title="Eliminar"
-                              >✕</button>
-                            </div>
-                          );
-                        })}
-                        {/* Lotes sin rinde */}
-                        {g.items.filter(c => !c.rinde_kg_ha).map(c => (
-                          <div key={c.id} className="flex items-center gap-3 opacity-40">
-                            <span className="text-xs font-black tabular-nums w-5 text-mid">—</span>
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center justify-between gap-2 mb-0.5">
-                                <span className="text-xs font-black truncate" style={{ color: '#0f172a' }}>
-                                  {c.lote?.nombre}
-                                  <span className="font-semibold text-mid"> · {c.prod?.razon_social}</span>
-                                </span>
-                                <span className="text-xs text-mid italic">sin rinde</span>
-                              </div>
-                              <div className="h-2 rounded-full" style={{ background: '#f1f5f9' }} />
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-
-                      {/* Tabla con todos los datos */}
-                      {g.conRinde.some(c => c.humedad_pct || c.proteina_pct || c.peso_hecto) && (
-                        <div className="mt-4 rounded-lg border border-slate-100 overflow-x-auto">
-                          <table className="w-full text-xs">
-                            <thead>
-                              <tr style={{ background: '#f8fafc' }}>
-                                <th className="text-left px-3 py-2 font-bold uppercase tracking-wider text-mid">Lote</th>
-                                <th className="text-right px-3 py-2 font-bold uppercase tracking-wider text-mid">Ha</th>
-                                <th className="text-right px-3 py-2 font-bold uppercase tracking-wider text-mid">Rinde kg/ha</th>
-                                <th className="text-right px-3 py-2 font-bold uppercase tracking-wider text-mid">Hum %</th>
-                                <th className="text-right px-3 py-2 font-bold uppercase tracking-wider text-mid">Rinde std</th>
-                                {g.conRinde.some(c => c.proteina_pct) && <th className="text-right px-3 py-2 font-bold uppercase tracking-wider text-mid">Prot %</th>}
-                                {g.conRinde.some(c => c.aceite_pct) && <th className="text-right px-3 py-2 font-bold uppercase tracking-wider text-mid">Aceite %</th>}
-                                {g.conRinde.some(c => c.peso_hecto) && <th className="text-right px-3 py-2 font-bold uppercase tracking-wider text-mid">PH</th>}
-                                <th className="text-right px-3 py-2 font-bold uppercase tracking-wider text-mid">Fecha</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {[...g.conRinde].sort((a, b) => Number(b.rinde_kg_ha) - Number(a.rinde_kg_ha)).map(c => {
-                                const std = c.rinde_kg_ha && c.humedad_pct
-                                  ? rindeStd(Number(c.rinde_kg_ha), Number(c.humedad_pct), c.cultivo)
-                                  : c.rinde_std_kg_ha;
-                                return (
-                                  <tr key={c.id} className="border-t border-slate-50 hover:bg-slate-50 transition-colors">
-                                    <td className="px-3 py-2 font-black" style={{ color: '#0f172a' }}>
-                                      {c.lote?.nombre}
-                                      <span className="font-normal text-mid"> {c.prod?.razon_social}</span>
-                                    </td>
-                                    <td className="px-3 py-2 text-right font-mono text-mid">{c.lote?.hectareas}</td>
-                                    <td className="px-3 py-2 text-right font-black tabular-nums" style={{ color: st.text }}>
-                                      {c.rinde_kg_ha ? fmt(Number(c.rinde_kg_ha), 0) : '—'}
-                                    </td>
-                                    <td className="px-3 py-2 text-right font-mono text-mid">
-                                      {c.humedad_pct ? fmt(Number(c.humedad_pct), 1) : '—'}
-                                    </td>
-                                    <td className="px-3 py-2 text-right font-mono text-mid">
-                                      {std ? fmt(Number(std), 0) : '—'}
-                                    </td>
-                                    {g.conRinde.some(x => x.proteina_pct) && (
-                                      <td className="px-3 py-2 text-right font-mono text-mid">
-                                        {c.proteina_pct ? fmt(Number(c.proteina_pct), 1) : '—'}
-                                      </td>
-                                    )}
-                                    {g.conRinde.some(x => x.aceite_pct) && (
-                                      <td className="px-3 py-2 text-right font-mono text-mid">
-                                        {c.aceite_pct ? fmt(Number(c.aceite_pct), 1) : '—'}
-                                      </td>
-                                    )}
-                                    {g.conRinde.some(x => x.peso_hecto) && (
-                                      <td className="px-3 py-2 text-right font-mono text-mid">
-                                        {c.peso_hecto ? fmt(Number(c.peso_hecto), 1) : '—'}
-                                      </td>
-                                    )}
-                                    <td className="px-3 py-2 text-right font-mono text-mid whitespace-nowrap">
-                                      {c.fecha_cosecha ? fmtFecha(c.fecha_cosecha) : '—'}
-                                    </td>
-                                  </tr>
-                                );
-                              })}
-                            </tbody>
-                          </table>
-                        </div>
-                      )}
-                    </div>
+          {cosechasActuales.length > 0 && (
+            <>
+              {/* KPIs */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {[
+                  { val: stats.n, label: 'Lotes cosechados', accent: '#0ea87a' },
+                  { val: stats.totalHa > 0 ? fmt(stats.totalHa, 0) : '—', label: 'Hectáreas', accent: '#0284c7' },
+                  { val: stats.promKgHa ? fmt(stats.promKgHa, 0) : '—', label: 'Rinde prom. kg/ha', accent: '#ca8a04' },
+                  { val: stats.totalTn > 0 ? fmt(stats.totalTn, 1) : '—', label: 'Toneladas totales', accent: '#475569' },
+                ].map(({ val, label, accent }) => (
+                  <div key={label} className="bg-white border border-slate-200 rounded-xl p-4 relative overflow-hidden shadow-sm">
+                    <div className="absolute left-0 top-3 bottom-3 w-0.5 rounded-full" style={{ background: accent }} />
+                    <p className="text-3xl font-black tabular-nums" style={{ color: accent }}>{val}</p>
+                    <p className="text-xs font-bold mt-1 text-mid uppercase tracking-wider">{label}</p>
                   </div>
-                );
-              })}
-            </div>
-          )}
-
-          {/* Tab Todos los lotes */}
-          {tab === 'lotes' && (
-            <div className="space-y-3">
-              {/* Filtros */}
-              <div className="flex flex-wrap gap-3">
-                <select
-                  value={filtroCultivo}
-                  onChange={e => setFiltroCultivo(e.target.value)}
-                  className="field py-1.5 text-sm min-w-[150px]"
-                >
-                  <option value="">Todos los cultivos</option>
-                  {cultivosConCosecha.map(c => <option key={c} value={c}>{c}</option>)}
-                </select>
-                <select
-                  value={filtroProductor}
-                  onChange={e => setFiltroProductor(e.target.value)}
-                  className="field py-1.5 text-sm min-w-[200px]"
-                >
-                  <option value="">Todos los productores</option>
-                  {productores.map(p => <option key={p.id} value={p.id}>{p.razon_social}</option>)}
-                </select>
+                ))}
               </div>
 
-              <div className="card overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr style={{ background: '#f8fafc' }}>
-                      <th className="text-left px-4 py-2.5 text-[10px] font-bold uppercase tracking-wider text-mid">Productor</th>
-                      <th className="text-left px-4 py-2.5 text-[10px] font-bold uppercase tracking-wider text-mid">Lote</th>
-                      <th className="text-left px-4 py-2.5 text-[10px] font-bold uppercase tracking-wider text-mid">Cultivo</th>
-                      <th className="text-right px-4 py-2.5 text-[10px] font-bold uppercase tracking-wider text-mid">Ha</th>
-                      <th className="text-right px-4 py-2.5 text-[10px] font-bold uppercase tracking-wider text-mid">Rinde kg/ha</th>
-                      <th className="text-right px-4 py-2.5 text-[10px] font-bold uppercase tracking-wider text-mid">Hum %</th>
-                      <th className="text-right px-4 py-2.5 text-[10px] font-bold uppercase tracking-wider text-mid">Rinde std</th>
-                      <th className="text-right px-4 py-2.5 text-[10px] font-bold uppercase tracking-wider text-mid">Total t</th>
-                      <th className="text-right px-4 py-2.5 text-[10px] font-bold uppercase tracking-wider text-mid">Fecha</th>
-                      <th className="px-4 py-2.5" />
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filtrados.length === 0 && (
-                      <tr><td colSpan={10} className="px-4 py-6 text-center text-mid text-sm">Sin resultados</td></tr>
-                    )}
-                    {filtrados.sort((a, b) => a.cultivo.localeCompare(b.cultivo) || (b.rinde_kg_ha ?? 0) - (a.rinde_kg_ha ?? 0)).map(c => {
-                      const st = cultStyle(c.cultivo);
-                      const std = c.rinde_kg_ha && c.humedad_pct
-                        ? rindeStd(Number(c.rinde_kg_ha), Number(c.humedad_pct), c.cultivo)
-                        : c.rinde_std_kg_ha;
-                      const totalTn = c.rinde_kg_ha && c.lote?.hectareas
-                        ? (Number(c.rinde_kg_ha) * Number(c.lote.hectareas)) / 1000
-                        : null;
+              {/* Tabs */}
+              <div className="flex gap-1 p-1 rounded-xl bg-slate-100 w-fit">
+                {([
+                  { id: 'resumen', label: 'Resumen' },
+                  { id: 'cultivo', label: 'Por cultivo' },
+                  { id: 'lotes',   label: 'Todos los lotes' },
+                ] as const).map(t => (
+                  <button
+                    key={t.id}
+                    onClick={() => setTab(t.id)}
+                    className="px-4 py-2 rounded-lg text-sm font-bold transition-all duration-150"
+                    style={tab === t.id
+                      ? { background: '#ffffff', color: '#0f172a', boxShadow: '0 1px 4px rgba(0,0,0,0.10)' }
+                      : { color: '#64748b' }
+                    }
+                  >
+                    {t.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Tab Resumen */}
+              {tab === 'resumen' && (
+                <div className="space-y-4">
+                  <p className="text-xs font-bold tracking-widest uppercase text-mid">Estado por cultivo</p>
+                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                    {porCultivo.map(g => {
+                      const st = cultStyle(g.cultivo);
                       return (
-                        <tr key={c.id} className="border-t border-base-4 hover:bg-slate-50 transition-colors">
-                          <td className="px-4 py-2.5 text-xs text-mid font-semibold truncate max-w-[130px]">{c.prod?.razon_social}</td>
-                          <td className="px-4 py-2.5 font-black text-xs" style={{ color: '#0f172a' }}>{c.lote?.nombre ?? '—'}</td>
-                          <td className="px-4 py-2.5">
-                            <span className="text-xs font-black px-2 py-0.5 rounded" style={{ background: st.badge, color: st.text, border: `1px solid ${st.border}40` }}>
-                              {c.cultivo}
+                        <div key={g.cultivo} className="bg-white rounded-xl border-2 overflow-hidden" style={{ borderColor: st.border }}>
+                          <div className="flex items-center gap-3 px-4 py-3" style={{ background: st.badge }}>
+                            <div className="w-3 h-3 rounded-full" style={{ background: st.strip }} />
+                            <p className="font-black text-base" style={{ color: st.text }}>{g.cultivo}</p>
+                            <span className="text-xs font-semibold ml-auto" style={{ color: st.text, opacity: 0.7 }}>
+                              {fmt(g.totalHa, 0)} ha
                             </span>
-                          </td>
-                          <td className="px-4 py-2.5 text-right font-mono text-xs text-mid">{c.lote?.hectareas ?? '—'}</td>
-                          <td className="px-4 py-2.5 text-right font-black tabular-nums text-sm" style={{ color: st.text }}>
-                            {c.rinde_kg_ha ? fmt(Number(c.rinde_kg_ha), 0) : '—'}
-                          </td>
-                          <td className="px-4 py-2.5 text-right font-mono text-xs text-mid">
-                            {c.humedad_pct ? fmt(Number(c.humedad_pct), 1) : '—'}
-                          </td>
-                          <td className="px-4 py-2.5 text-right font-mono text-xs text-mid">
-                            {std ? fmt(Number(std), 0) : '—'}
-                          </td>
-                          <td className="px-4 py-2.5 text-right font-black text-sm text-afa">
-                            {totalTn ? `${fmt(totalTn, 1)} t` : '—'}
-                          </td>
-                          <td className="px-4 py-2.5 text-right font-mono text-xs text-mid whitespace-nowrap">
-                            {c.fecha_cosecha ? fmtFecha(c.fecha_cosecha) : '—'}
-                          </td>
-                          <td className="px-4 py-2.5">
-                            <div className="flex gap-2 justify-end">
-                              <button
-                                onClick={() => onEditar(c)}
-                                className="text-mid hover:text-afa transition-colors text-xs"
-                                title="Editar"
-                              >✏️</button>
-                              <button
-                                onClick={() => onEliminar(c.id)}
-                                className="text-mid hover:text-danger transition-colors text-xs"
-                                title="Eliminar"
-                              >✕</button>
+                            {/* Acceso rápido a carga */}
+                            <button
+                              onClick={() => abrirCarga(g.cultivo)}
+                              className="text-[10px] font-black px-2 py-0.5 rounded-lg transition-all"
+                              style={{ background: st.strip, color: '#fff' }}
+                              title="Cargar rindes"
+                            >
+                              + Cargar
+                            </button>
+                          </div>
+                          <div className="p-4 space-y-3">
+                            <div className="grid grid-cols-3 gap-2 text-center">
+                              <div>
+                                <p className="text-xl font-black tabular-nums" style={{ color: '#0f172a' }}>
+                                  {g.promKgHa ? fmt(g.promKgHa, 0) : '—'}
+                                </p>
+                                <p className="text-[10px] text-mid font-semibold">kg/ha prom.</p>
+                              </div>
+                              <div>
+                                <p className="text-xl font-black tabular-nums text-afa">
+                                  {fmt(g.totalTn, 1)}
+                                </p>
+                                <p className="text-[10px] text-mid font-semibold">t totales</p>
+                              </div>
+                              <div>
+                                <p className="text-xl font-black tabular-nums text-sky-600">
+                                  {g.lotesCosechados}
+                                  {g.lotesPendientes > 0 && <span className="text-sm text-mid">/{g.lotesCosechados + g.lotesPendientes}</span>}
+                                </p>
+                                <p className="text-[10px] text-mid font-semibold">lotes</p>
+                              </div>
                             </div>
-                          </td>
-                        </tr>
+                            {g.minRinde != null && g.maxRinde != null && g.promKgHa != null && g.minRinde !== g.maxRinde && (
+                              <BarraRinde min={g.minRinde} max={g.maxRinde} prom={g.promKgHa} color={st.strip} />
+                            )}
+                            {g.lotesPendientes > 0 && (
+                              <p className="text-xs text-mid">{g.lotesPendientes} lote{g.lotesPendientes > 1 ? 's' : ''} sin rinde aún</p>
+                            )}
+                          </div>
+                        </div>
                       );
                     })}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Tab Por cultivo */}
+              {tab === 'cultivo' && (
+                <div className="space-y-6">
+                  {porCultivo.map(g => {
+                    const st = cultStyle(g.cultivo);
+                    const ranking = [...g.conRinde].sort((a, b) => Number(b.rinde_kg_ha) - Number(a.rinde_kg_ha));
+                    const maxR = ranking[0] ? Number(ranking[0].rinde_kg_ha) : 1;
+                    return (
+                      <div key={g.cultivo} className="bg-white rounded-xl border-2 overflow-hidden" style={{ borderColor: st.border }}>
+                        <div className="flex items-center gap-3 px-5 py-3.5" style={{ background: st.badge, borderBottom: `1px solid ${st.border}30` }}>
+                          <div className="w-3 h-3 rounded-full" style={{ background: st.strip }} />
+                          <h2 className="text-lg font-black" style={{ color: st.text }}>{g.cultivo}</h2>
+                          <span className="text-sm font-semibold" style={{ color: st.text, opacity: 0.7 }}>
+                            {g.lotesCosechados} lotes · {fmt(g.totalHa, 0)} ha · {fmt(g.totalTn, 1)} t
+                          </span>
+                          {g.promKgHa && (
+                            <span className="ml-auto text-sm font-black px-3 py-0.5 rounded-full" style={{ background: st.badge, color: st.text, border: `1px solid ${st.border}60` }}>
+                              Prom: {fmt(g.promKgHa, 0)} kg/ha
+                            </span>
+                          )}
+                          <button
+                            onClick={() => abrirCarga(g.cultivo)}
+                            className="text-[10px] font-black px-3 py-1 rounded-lg transition-all"
+                            style={{ background: st.strip, color: '#fff' }}
+                          >
+                            + Cargar
+                          </button>
+                        </div>
+                        <div className="p-5">
+                          <p className="text-xs font-bold tracking-widest uppercase text-mid mb-3">Ranking de lotes</p>
+                          <div className="space-y-2">
+                            {ranking.map((c, i) => {
+                              const pct = maxR > 0 ? (Number(c.rinde_kg_ha) / maxR) * 100 : 0;
+                              return (
+                                <div key={c.id} className="flex items-center gap-3">
+                                  <span className="text-xs font-black tabular-nums w-5 text-mid">{i + 1}</span>
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center justify-between gap-2 mb-0.5">
+                                      <span className="text-xs font-black truncate" style={{ color: '#0f172a' }}>
+                                        {c.lote?.nombre}
+                                        <span className="font-semibold text-mid"> · {c.prod?.razon_social}</span>
+                                      </span>
+                                      <div className="flex items-center gap-2 shrink-0">
+                                        <span className="text-sm font-black tabular-nums" style={{ color: st.text }}>
+                                          {fmt(Number(c.rinde_kg_ha), 0)} kg/ha
+                                        </span>
+                                        <span className="text-xs text-mid font-mono">
+                                          {c.lote?.hectareas ? `${fmt(Number(c.rinde_kg_ha) * Number(c.lote.hectareas) / 1000, 1)} t` : ''}
+                                        </span>
+                                      </div>
+                                    </div>
+                                    <div className="h-2 rounded-full overflow-hidden" style={{ background: '#f1f5f9' }}>
+                                      <div className="h-full rounded-full transition-all duration-500" style={{ width: `${pct}%`, background: st.strip }} />
+                                    </div>
+                                  </div>
+                                  <button onClick={() => onEliminar(c.id)} className="text-mid hover:text-danger transition-colors text-xs shrink-0" title="Eliminar">✕</button>
+                                </div>
+                              );
+                            })}
+                            {g.items.filter(c => !c.rinde_kg_ha).map(c => (
+                              <div key={c.id} className="flex items-center gap-3 opacity-40">
+                                <span className="text-xs font-black tabular-nums w-5 text-mid">—</span>
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center justify-between gap-2 mb-0.5">
+                                    <span className="text-xs font-black truncate" style={{ color: '#0f172a' }}>
+                                      {c.lote?.nombre}
+                                      <span className="font-semibold text-mid"> · {c.prod?.razon_social}</span>
+                                    </span>
+                                    <span className="text-xs text-mid italic">sin rinde</span>
+                                  </div>
+                                  <div className="h-2 rounded-full" style={{ background: '#f1f5f9' }} />
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Tab Todos los lotes */}
+              {tab === 'lotes' && (
+                <div className="space-y-3">
+                  <div className="flex flex-wrap gap-3">
+                    <select value={filtroCultivo} onChange={e => setFiltroCultivo(e.target.value)} className="field py-1.5 text-sm min-w-[150px]">
+                      <option value="">Todos los cultivos</option>
+                      {cultivosConCosecha.map(c => <option key={c} value={c}>{c}</option>)}
+                    </select>
+                    <select value={filtroProductor} onChange={e => setFiltroProductor(e.target.value)} className="field py-1.5 text-sm min-w-[200px]">
+                      <option value="">Todos los productores</option>
+                      {productores.map(p => <option key={p.id} value={p.id}>{p.razon_social}</option>)}
+                    </select>
+                  </div>
+                  <div className="bg-white border border-slate-200 rounded-xl overflow-x-auto shadow-sm">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr style={{ background: '#f8fafc' }}>
+                          <th className="text-left px-4 py-2.5 text-[10px] font-bold uppercase tracking-wider text-mid">Productor</th>
+                          <th className="text-left px-4 py-2.5 text-[10px] font-bold uppercase tracking-wider text-mid">Lote</th>
+                          <th className="text-left px-4 py-2.5 text-[10px] font-bold uppercase tracking-wider text-mid">Cultivo</th>
+                          <th className="text-right px-4 py-2.5 text-[10px] font-bold uppercase tracking-wider text-mid">Ha</th>
+                          <th className="text-right px-4 py-2.5 text-[10px] font-bold uppercase tracking-wider text-mid">Rinde kg/ha</th>
+                          <th className="text-right px-4 py-2.5 text-[10px] font-bold uppercase tracking-wider text-mid">Hum %</th>
+                          <th className="text-right px-4 py-2.5 text-[10px] font-bold uppercase tracking-wider text-mid">Rinde std</th>
+                          <th className="text-right px-4 py-2.5 text-[10px] font-bold uppercase tracking-wider text-mid">Total t</th>
+                          <th className="text-right px-4 py-2.5 text-[10px] font-bold uppercase tracking-wider text-mid">Fecha</th>
+                          <th className="px-4 py-2.5" />
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filtrados.length === 0 && (
+                          <tr><td colSpan={10} className="px-4 py-6 text-center text-mid text-sm">Sin resultados</td></tr>
+                        )}
+                        {filtrados.sort((a, b) => a.cultivo.localeCompare(b.cultivo) || (b.rinde_kg_ha ?? 0) - (a.rinde_kg_ha ?? 0)).map(c => {
+                          const st = cultStyle(c.cultivo);
+                          const std = c.rinde_kg_ha && c.humedad_pct
+                            ? rindeStd(Number(c.rinde_kg_ha), Number(c.humedad_pct), c.cultivo)
+                            : c.rinde_std_kg_ha;
+                          const totalTn = c.rinde_kg_ha && c.lote?.hectareas
+                            ? (Number(c.rinde_kg_ha) * Number(c.lote.hectareas)) / 1000
+                            : null;
+                          return (
+                            <tr key={c.id} className="border-t border-base-4 hover:bg-slate-50 transition-colors">
+                              <td className="px-4 py-2.5 text-xs text-mid font-semibold truncate max-w-[130px]">{c.prod?.razon_social}</td>
+                              <td className="px-4 py-2.5 font-black text-xs" style={{ color: '#0f172a' }}>{c.lote?.nombre ?? '—'}</td>
+                              <td className="px-4 py-2.5">
+                                <span className="text-xs font-black px-2 py-0.5 rounded" style={{ background: st.badge, color: st.text, border: `1px solid ${st.border}40` }}>
+                                  {c.cultivo}
+                                </span>
+                              </td>
+                              <td className="px-4 py-2.5 text-right font-mono text-xs text-mid">{c.lote?.hectareas ?? '—'}</td>
+                              <td className="px-4 py-2.5 text-right font-black tabular-nums text-sm" style={{ color: st.text }}>
+                                {c.rinde_kg_ha ? fmt(Number(c.rinde_kg_ha), 0) : '—'}
+                              </td>
+                              <td className="px-4 py-2.5 text-right font-mono text-xs text-mid">
+                                {c.humedad_pct ? fmt(Number(c.humedad_pct), 1) : '—'}
+                              </td>
+                              <td className="px-4 py-2.5 text-right font-mono text-xs text-mid">
+                                {std ? fmt(Number(std), 0) : '—'}
+                              </td>
+                              <td className="px-4 py-2.5 text-right font-black text-sm text-afa">
+                                {totalTn ? `${fmt(totalTn, 1)} t` : '—'}
+                              </td>
+                              <td className="px-4 py-2.5 text-right font-mono text-xs text-mid whitespace-nowrap">
+                                {c.fecha_cosecha ? fmtFecha(c.fecha_cosecha) : '—'}
+                              </td>
+                              <td className="px-4 py-2.5">
+                                <div className="flex gap-2 justify-end">
+                                  <button
+                                    onClick={() => abrirCarga(c.cultivo)}
+                                    className="text-mid hover:text-afa transition-colors text-xs"
+                                    title="Editar en planilla"
+                                  >✏️</button>
+                                  <button
+                                    onClick={() => onEliminar(c.id)}
+                                    className="text-mid hover:text-danger transition-colors text-xs"
+                                    title="Eliminar"
+                                  >✕</button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </>
       )}
@@ -665,206 +833,13 @@ function BarraRinde({ min, max, prom, color }: { min: number; max: number; prom:
         <div
           className="absolute w-0.5 h-full"
           style={{ left: `${promPct}%`, background: color, transform: 'translateX(-50%)' }}
-          title={`Prom: ${fmt(prom, 0)} kg/ha`}
+          title={`Prom: ${prom.toLocaleString('es-AR', { maximumFractionDigits: 0 })} kg/ha`}
         />
       </div>
       <div className="flex justify-between text-[10px] font-mono text-mid mt-0.5">
-        <span>min {fmt(min, 0)}</span>
-        <span>max {fmt(max, 0)}</span>
+        <span>min {min.toLocaleString('es-AR', { maximumFractionDigits: 0 })}</span>
+        <span>max {max.toLocaleString('es-AR', { maximumFractionDigits: 0 })}</span>
       </div>
     </div>
-  );
-}
-
-// ── Formulario de carga ───────────────────────────────────
-const CULTIVOS_LISTA = ['Soja', 'Soja 2°', 'Maíz', 'Trigo', 'Cebada', 'Sorgo', 'Girasol', 'Alfalfa'];
-
-function FormCosecha({
-  productores, lotes, userId, onGuardado, preload, editando,
-}: {
-  productores: Productor[];
-  lotes:       Lote[];
-  userId:      string;
-  onGuardado:  (c: Cosecha) => void;
-  preload?:    { loteId: string; productorId: string; cultivo: string };
-  editando?:   Cosecha;
-}) {
-  // Si editando: usar sus datos; si preload: usar preload; si nada: defaults
-  const loteEdit = editando ? lotes.find(l => l.id === editando.lote_id) : null;
-  const initProductorId = editando
-    ? (loteEdit?.productor_id ?? productores[0]?.id ?? '')
-    : (preload?.productorId ?? productores[0]?.id ?? '');
-
-  const [productorId, setProductorId] = useState(initProductorId);
-  const [loteId,      setLoteId]      = useState(editando?.lote_id ?? preload?.loteId ?? '');
-  const [cultivo,     setCultivo]     = useState(editando?.cultivo ?? preload?.cultivo ?? '');
-  const str = (v: number | null | undefined) => v != null ? String(v) : '';
-  const [fecha,       setFecha]       = useState(editando?.fecha_cosecha ?? new Date().toISOString().slice(0, 10));
-  const [rindeKgHa,   setRindeKgHa]   = useState(str(editando?.rinde_kg_ha));
-  const [humedad,     setHumedad]     = useState(str(editando?.humedad_pct));
-  const [proteina,    setProteina]    = useState(str(editando?.proteina_pct));
-  const [aceite,      setAceite]      = useState(str(editando?.aceite_pct));
-  const [pesoHecto,   setPesoHecto]   = useState(str(editando?.peso_hecto));
-  const [obs,         setObs]         = useState(editando?.observaciones ?? '');
-  const [saving,      setSaving]      = useState(false);
-  const [err,         setErr]         = useState<string | null>(null);
-
-  const lotesDelProd = lotes.filter(l => l.productor_id === productorId);
-
-  // Cuando cambia el lote, pre-completar cultivo
-  function onLote(id: string) {
-    setLoteId(id);
-    const lote = lotes.find(l => l.id === id);
-    if (lote?.cultivo && !cultivo) setCultivo(lote.cultivo);
-  }
-
-  function onProductor(id: string) {
-    setProductorId(id);
-    setLoteId('');
-    setCultivo('');
-  }
-
-  async function guardar(e: React.FormEvent) {
-    e.preventDefault();
-    if (!loteId || !cultivo) { setErr('Seleccioná lote y cultivo.'); return; }
-    setSaving(true); setErr(null);
-    const num = (s: string) => s.trim() === '' ? null : Number(s.replace(',', '.'));
-    const std = rindeKgHa && humedad
-      ? rindeStd(Number(rindeKgHa.replace(',', '.')), Number(humedad.replace(',', '.')), cultivo)
-      : null;
-    const row = {
-      lote_id: loteId, ingeniero_id: userId, cultivo,
-      fecha_cosecha: fecha || null,
-      rinde_kg_ha:      num(rindeKgHa),
-      humedad_pct:      num(humedad),
-      rinde_std_kg_ha:  std ? Math.round(std) : null,
-      proteina_pct:     num(proteina),
-      aceite_pct:       num(aceite),
-      peso_hecto:       num(pesoHecto),
-      observaciones:    obs || null,
-    };
-    const sb = createClient() as any;
-    const { data, error } = editando
-      ? await sb.from('cosechas').update(row).eq('id', editando.id).select().single()
-      : await sb.from('cosechas').insert(row).select().single();
-    setSaving(false);
-    if (error) { setErr(`Error: ${error.message}`); return; }
-    onGuardado(data);
-  }
-
-  const lotePreloaded = preload ? lotes.find(l => l.id === preload.loteId) : null;
-  const prodPreloaded = lotePreloaded ? productores.find(p => p.id === lotePreloaded.productor_id) : null;
-  const st2 = preload ? cultStyle(preload.cultivo) : editando ? cultStyle(editando.cultivo) : null;
-  const stEdit = editando ? cultStyle(editando.cultivo) : null;
-  const loteEditDisplay = editando ? lotes.find(l => l.id === editando.lote_id) : null;
-  const prodEditDisplay = loteEditDisplay ? productores.find(p => p.id === loteEditDisplay.productor_id) : null;
-
-  return (
-    <form onSubmit={guardar} className="bg-white border border-slate-200 rounded-2xl p-5 space-y-4 shadow-sm" style={st2 ? { borderLeft: `4px solid ${st2.strip}` } : undefined}>
-      {editando && stEdit ? (
-        <div className="flex items-center gap-3">
-          <span className="text-lg">✏️</span>
-          <div>
-            <p className="text-xs font-black uppercase tracking-widest" style={{ color: stEdit.text }}>
-              Editando cosecha · {editando.cultivo}
-            </p>
-            <p className="font-black text-sm" style={{ color: '#0f172a' }}>
-              {loteEditDisplay?.nombre}
-              {prodEditDisplay && <span className="font-normal text-mid ml-1">· {prodEditDisplay.razon_social}</span>}
-            </p>
-          </div>
-        </div>
-      ) : preload && st2 ? (
-        <div className="flex items-center gap-3">
-          <span className="text-lg">🌱</span>
-          <div>
-            <p className="text-xs font-black uppercase tracking-widest" style={{ color: st2.text }}>
-              Segundo cultivo · {preload.cultivo}
-            </p>
-            <p className="font-black text-sm" style={{ color: '#0f172a' }}>
-              {lotePreloaded?.nombre}
-              {prodPreloaded && <span className="font-normal text-mid ml-1">· {prodPreloaded.razon_social}</span>}
-            </p>
-          </div>
-        </div>
-      ) : (
-        <p className="eyebrow">Cargar rinde de cosecha</p>
-      )}
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <label className="grid gap-1 text-xs text-mid">Productor
-          {(preload || editando) ? (
-            <div className="field bg-base-3 text-mid cursor-default">
-              {editando ? (prodEditDisplay?.razon_social ?? '—') : (prodPreloaded?.razon_social ?? '—')}
-            </div>
-          ) : (
-            <select className="field" value={productorId} onChange={e => onProductor(e.target.value)}>
-              {productores.map(p => <option key={p.id} value={p.id}>{p.razon_social}</option>)}
-            </select>
-          )}
-        </label>
-        <label className="grid gap-1 text-xs text-mid">Lote
-          {(preload || editando) ? (
-            <div className="field bg-base-3 text-mid cursor-default">
-              {editando ? `${loteEditDisplay?.nombre} · ${loteEditDisplay?.hectareas} ha` : `${lotePreloaded?.nombre} · ${lotePreloaded?.hectareas} ha`}
-            </div>
-          ) : (
-            <select className="field" value={loteId} onChange={e => onLote(e.target.value)}>
-              <option value="">Seleccionar lote…</option>
-              {lotesDelProd.map(l => <option key={l.id} value={l.id}>{l.nombre} · {l.hectareas} ha</option>)}
-            </select>
-          )}
-        </label>
-        <label className="grid gap-1 text-xs text-mid">Cultivo cosechado
-          {(preload || editando) ? (
-            <div className="field font-bold cursor-default" style={{ background: st2!.badge, color: st2!.text, border: `1px solid ${st2!.border}` }}>
-              {editando ? editando.cultivo : preload!.cultivo}
-            </div>
-          ) : (
-            <select className="field" value={cultivo} onChange={e => setCultivo(e.target.value)}>
-              <option value="">Seleccionar…</option>
-              {CULTIVOS_LISTA.map(c => <option key={c} value={c}>{c}</option>)}
-            </select>
-          )}
-        </label>
-        <label className="grid gap-1 text-xs text-mid">Fecha de cosecha
-          <input type="date" className="field" value={fecha} onChange={e => setFecha(e.target.value)} />
-        </label>
-      </div>
-
-      <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-6">
-        <label className="grid gap-1 text-xs text-mid">Rinde kg/ha *
-          <input inputMode="decimal" className="field" placeholder="ej. 3200" value={rindeKgHa} onChange={e => setRindeKgHa(e.target.value)} />
-        </label>
-        <label className="grid gap-1 text-xs text-mid">Humedad %
-          <input inputMode="decimal" className="field" placeholder="ej. 14.5" value={humedad} onChange={e => setHumedad(e.target.value)} />
-        </label>
-        <label className="grid gap-1 text-xs text-mid">
-          Rinde std {rindeKgHa && humedad ? `(${fmt(rindeStd(Number(rindeKgHa.replace(',','.')), Number(humedad.replace(',','.')), cultivo || 'Soja'), 0)} kg/ha)` : ''}
-          <input readOnly className="field bg-base-3 cursor-default text-mid"
-            value={rindeKgHa && humedad ? fmt(rindeStd(Number(rindeKgHa.replace(',','.')), Number(humedad.replace(',','.')), cultivo || 'Soja'), 0) : ''}
-            placeholder="auto" />
-        </label>
-        <label className="grid gap-1 text-xs text-mid">Proteína %
-          <input inputMode="decimal" className="field" placeholder="ej. 42" value={proteina} onChange={e => setProteina(e.target.value)} />
-        </label>
-        <label className="grid gap-1 text-xs text-mid">Aceite %
-          <input inputMode="decimal" className="field" placeholder="ej. 20" value={aceite} onChange={e => setAceite(e.target.value)} />
-        </label>
-        <label className="grid gap-1 text-xs text-mid">Peso hectol.
-          <input inputMode="decimal" className="field" placeholder="ej. 78" value={pesoHecto} onChange={e => setPesoHecto(e.target.value)} />
-        </label>
-      </div>
-
-      <label className="grid gap-1 text-xs text-mid">Observaciones
-        <input className="field" placeholder="opcional" value={obs} onChange={e => setObs(e.target.value)} />
-      </label>
-
-      {err && <p className="text-danger text-sm">{err}</p>}
-      <div className="flex gap-3">
-        <button type="submit" className="btn-afa" disabled={saving || !loteId || !cultivo}>
-          {saving ? 'Guardando…' : editando ? 'Guardar cambios' : 'Guardar cosecha'}
-        </button>
-      </div>
-    </form>
   );
 }
