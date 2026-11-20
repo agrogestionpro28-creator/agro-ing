@@ -227,11 +227,9 @@ export function FenologiaClient({
       </div>
 
       {/* Debug temporal */}
-      {process.env.NODE_ENV !== 'production' || true ? (
-        <div className="text-xs text-mid bg-yellow-50 border border-yellow-200 rounded-lg p-3 font-mono">
-          lotes total: {lotes.length} | campaña actual: {lotesActuales.length} | cultivos: [{cultivosUnicos.join(', ')}] | grupos: {grupos.length}
-        </div>
-      ) : null}
+      <div className="text-xs text-mid bg-yellow-50 border border-yellow-200 rounded-lg p-3 font-mono">
+        productores: {productores.length} | lotes total: {lotes.length} | campaña actual: {lotesActuales.length} | cultivos: [{cultivosUnicos.join(', ')}] | grupos: {grupos.length}
+      </div>
 
       {/* Referencia tipos */}
       <div className="flex flex-wrap gap-2">
