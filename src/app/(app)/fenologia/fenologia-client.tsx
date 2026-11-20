@@ -140,11 +140,13 @@ export function FenologiaClient({
   const [filtroCultivo, setFiltroCultivo] = useState('todos')
   const [filtroProductor, setFiltroProductor] = useState('todos')
 
-  // Lotes de la campaña actual (si no hay campaña seleccionada, muestra todos)
-  const lotesActuales = useMemo(
-    () => campanaId ? lotes.filter(l => l.campana_id === campanaId) : lotes,
-    [lotes, campanaId]
-  )
+  // Lotes de la campaña actual
+  // Si no hay campanaId, o ningún lote matchea esa campaña, muestra todos (fallback)
+  const lotesActuales = useMemo(() => {
+    if (!campanaId) return lotes
+    const filtrados = lotes.filter(l => l.campana_id === campanaId)
+    return filtrados.length > 0 ? filtrados : lotes
+  }, [lotes, campanaId])
 
   // Filtrar
   const lotesFiltrados = useMemo(() => lotesActuales.filter(l => {
@@ -217,8 +219,9 @@ export function FenologiaClient({
           value={filtroCultivo}
           onChange={e => setFiltroCultivo(e.target.value)}
           className="field py-1.5 text-sm min-w-[150px]"
+          disabled={cultivosUnicos.length === 0}
         >
-          <option value="todos">Todos los cultivos</option>
+          <option value="todos">{cultivosUnicos.length === 0 ? 'Sin cultivos' : 'Todos los cultivos'}</option>
           {cultivosUnicos.map(c => <option key={c} value={c}>{c}</option>)}
         </select>
       </div>
