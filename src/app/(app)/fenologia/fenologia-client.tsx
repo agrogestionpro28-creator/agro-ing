@@ -169,19 +169,26 @@ export function FenologiaClient({
     return [...s].sort()
   }, [lotesActuales])
 
-  // Agrupar lotes por cultivo (un lote doble aparece en ambos grupos)
+  // Agrupar lotes por cultivo
+  // Para cultivo_2: usar fecha_cosecha como fecha_siembra efectiva (si no tiene cosecha, no mostrar aún)
   const grupos = useMemo(() => {
     const g: Record<string, Lote[]> = {}
     for (const l of lotesFiltrados) {
-      const cultivos = [l.cultivo, l.cultivo_2].filter(Boolean) as string[]
-      if (cultivos.length === 0) {
+      // Cultivo principal
+      if (l.cultivo) {
+        if (!g[l.cultivo]) g[l.cultivo] = []
+        g[l.cultivo].push(l)
+      }
+      // Segundo cultivo: solo si tiene fecha_cosecha del primero (que se usa como fecha_siembra del segundo)
+      if (l.cultivo_2 && l.fecha_cosecha) {
+        const lote2 = { ...l, cultivo: l.cultivo_2, fecha_siembra: l.fecha_cosecha }
+        if (!g[l.cultivo_2]) g[l.cultivo_2] = []
+        g[l.cultivo_2].push(lote2)
+      }
+      // Si no tiene cultivo principal
+      if (!l.cultivo && !l.cultivo_2) {
         if (!g['Sin cultivo']) g['Sin cultivo'] = []
         g['Sin cultivo'].push(l)
-      } else {
-        for (const c of cultivos) {
-          if (!g[c]) g[c] = []
-          g[c].push(l)
-        }
       }
     }
     return Object.entries(g).sort((a, b) => a[0].localeCompare(b[0]))
