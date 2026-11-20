@@ -8,31 +8,20 @@ export default async function FenologiaPage() {
   const { data: { user } } = await sb.auth.getUser()
   if (!user) return null
 
-  const { data: productores } = await (sb as any)
-    .from('productores').select('id,razon_social')
-    .eq('ingeniero_id', user.id).eq('activo', true).order('razon_social')
+  // La tabla lotes usa empresa_id (no productor_id) e ingeniero_id directo
+  const { data: empresas } = await (sb as any)
+    .from('empresas').select('id,razon_social')
+    .eq('ingeniero_id', user.id).order('razon_social')
 
   const { data: campanas } = await (sb as any)
     .from('campanas').select('id,nombre,fecha_inicio,fecha_fin')
+    .eq('ingeniero_id', user.id)
     .order('fecha_inicio', { ascending: false })
 
-  const prodIds = (productores ?? []).map((p: any) => p.id)
-
-  // Traer lotes: primero por productor_id, si no hay resultados buscar por campana del ingeniero
-  let { data: lotes } = prodIds.length
-    ? await (sb as any).from('lotes')
-        .select('id,nombre,hectareas,cultivo,cultivo_2,variedad,tecnologia_soja,productor_id,campana_id,fecha_siembra,fecha_cosecha')
-        .in('productor_id', prodIds)
-    : { data: [] }
-
-  // Fallback: si no hay lotes por productor, buscar por campanas del ingeniero
-  if ((!lotes || lotes.length === 0) && campanas && campanas.length > 0) {
-    const campanaIds = (campanas as any[]).map((c: any) => c.id)
-    const { data: lotesPorCampana } = await (sb as any).from('lotes')
-      .select('id,nombre,hectareas,cultivo,cultivo_2,variedad,tecnologia_soja,productor_id,campana_id,fecha_siembra,fecha_cosecha')
-      .in('campana_id', campanaIds)
-    lotes = lotesPorCampana
-  }
+  // Traer lotes por ingeniero_id directo
+  const { data: lotes } = await (sb as any).from('lotes')
+    .select('id,nombre,hectareas,cultivo,empresa_id,campana_id,fecha_siembra,fecha_cosecha,tecnologia_soja')
+    .eq('ingeniero_id', user.id)
 
   const loteIds = (lotes ?? []).map((l: any) => l.id)
 
@@ -43,11 +32,24 @@ export default async function FenologiaPage() {
         .order('fecha', { ascending: true })
     : { data: [] }
 
+  // Mapear empresa_id → productor_id para compatibilidad con el cliente
+  const lotesNormalizados = (lotes ?? []).map((l: any) => ({
+    ...l,
+    productor_id: l.empresa_id,
+    cultivo_2: null,
+    variedad: null,
+  }))
+
+  const productoresNormalizados = (empresas ?? []).map((e: any) => ({
+    id: e.id,
+    razon_social: e.razon_social,
+  }))
+
   return (
     <FenologiaClient
-      productores={productores ?? []}
+      productores={productoresNormalizados}
       campanas={campanas ?? []}
-      lotes={lotes ?? []}
+      lotes={lotesNormalizados}
       aplicaciones={aplicaciones ?? []}
     />
   )
