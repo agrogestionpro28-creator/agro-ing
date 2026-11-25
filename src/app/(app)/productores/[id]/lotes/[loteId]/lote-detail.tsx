@@ -154,161 +154,133 @@ export function LoteDetail({ lote:initial, productorId, productorNombre, ingenie
   }, 0);
   const costoTotalApl = aplForm.costo_ha ? parseFloat(aplForm.costo_ha) * hasTotalesApl : 0;
 
-  // ── GENERADOR DE IMAGEN ──
+  // ── GENERADOR DE IMAGEN (múltiples lotes) ──
   function generarImagen(apl: Aplicacion) {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const W = 900, H = 520;
+    const W = 900;
+
+    // Medir líneas de productos
+    const prods = (apl.productos || '—').toUpperCase();
+    const tmpC = document.createElement('canvas');
+    const tmpX = tmpC.getContext('2d')!;
+    tmpX.font = 'bold 22px Inter,sans-serif';
+    const pWords = prods.split(' '); let pLine2 = ''; const pLines2: string[] = [];
+    for (const w of pWords) {
+      const test = pLine2 + w + ' ';
+      if (tmpX.measureText(test).width > W - 80 && pLine2) { pLines2.push(pLine2.trim()); pLine2 = w + ' '; }
+      else pLine2 = test;
+    }
+    if (pLine2.trim()) pLines2.push(pLine2.trim());
+    const prodBlockH = 28 + pLines2.length * 32 + 16;
+
+    // Calcular altura de lotes (en línea corrida)
+    const lotesInfo = lotesProductor.filter(l=>lotesSeleccionados.includes(l.id));
+    const totalHas = lotesInfo.reduce((s,l)=>s+l.hectareas, 0);
+    // Lotes en texto inline: "NILDA (16 HA) · OFELIA (16 HA) · RITA (23 HA)"
+    tmpX.font = 'bold 15px Inter,sans-serif';
+    const lotesStr = lotesInfo.map(l=>`${l.nombre.toUpperCase()} (${l.hectareas} HA)`).join('  ·  ');
+    const lotesWords = lotesStr.split(' '); let lLine = ''; const lLines: string[] = [];
+    for (const w of lotesWords) {
+      const test = lLine + w + ' ';
+      if (tmpX.measureText(test).width > W - 80 && lLine) { lLines.push(lLine.trim()); lLine = w + ' '; }
+      else lLine = test;
+    }
+    if (lLine.trim()) lLines.push(lLine.trim());
+    const lotesBlockH = 28 + lLines.length * 24 + 16;
+
+    const H = Math.max(400, 110 + prodBlockH + lotesBlockH + 80);
     canvas.width = W; canvas.height = H;
     const ctx = canvas.getContext('2d')!;
 
-    // Fondo negro
-    ctx.fillStyle = '#0a0a0a';
-    ctx.fillRect(0, 0, W, H);
+    // Fondo
+    ctx.fillStyle = '#0a0a0a'; ctx.fillRect(0, 0, W, H);
 
-    // Panal de fondo
-    ctx.strokeStyle = 'rgba(245,158,11,0.07)';
-    ctx.lineWidth = 1;
-    for (let row = 0; row < 12; row++) {
-      for (let col = 0; col < 18; col++) {
-        const ox = col * 54 + (row % 2 === 0 ? 0 : 27);
-        const oy = row * 36 - 18;
-        ctx.beginPath();
-        const pts = [[27,0],[54,18],[54,36],[27,54],[0,36],[0,18]];
-        ctx.moveTo(ox+pts[0][0], oy+pts[0][1]);
-        pts.slice(1).forEach(([x,y]) => ctx.lineTo(ox+x, oy+y));
-        ctx.closePath();
-        ctx.stroke();
-      }
+    // Panal sutil verde
+    ctx.strokeStyle = 'rgba(46,170,110,0.06)'; ctx.lineWidth = 1;
+    for (let row = 0; row < 30; row++) for (let col = 0; col < 20; col++) {
+      const ox = col*54+(row%2===0?0:27), oy = row*36-18;
+      ctx.beginPath();
+      [[27,0],[54,18],[54,36],[27,54],[0,36],[0,18]].forEach(([x,yy],i) => i===0?ctx.moveTo(ox+x,oy+yy):ctx.lineTo(ox+x,oy+yy));
+      ctx.closePath(); ctx.stroke();
     }
 
-    // Banda lateral izquierda verde
+    // Banda lateral verde
     const grad = ctx.createLinearGradient(0,0,0,H);
-    grad.addColorStop(0, '#2EAA6E');
-    grad.addColorStop(1, '#1a3d24');
-    ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, 6, H);
+    grad.addColorStop(0,'#2EAA6E'); grad.addColorStop(1,'#0d2818');
+    ctx.fillStyle = grad; ctx.fillRect(0,0,8,H);
 
-    // Banda superior oscura
-    ctx.fillStyle = 'rgba(245,158,11,0.08)';
-    ctx.fillRect(6, 0, W-6, 80);
+    // ── HEADER ──
+    ctx.fillStyle = 'rgba(10,10,10,0.98)'; ctx.fillRect(8,0,W-8,108);
+    ctx.strokeStyle = 'rgba(255,255,255,0.08)'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(8,108); ctx.lineTo(W,108); ctx.stroke();
 
-    // Header: tipo aplicación
-    ctx.fillStyle = '#f59e0b';
-    ctx.font = 'bold 11px Inter, sans-serif';
-    ctx.letterSpacing = '0.2em';
-    ctx.fillText('ORDEN DE APLICACIÓN', 30, 30);
-    ctx.letterSpacing = '0';
+    // Eyebrow tipo (verde, chico)
+    ctx.fillStyle = '#2EAA6E'; ctx.font = 'bold 10px Inter,sans-serif';
+    ctx.letterSpacing = '3px'; ctx.fillText(apl.tipo.toUpperCase(), 28, 28); ctx.letterSpacing = '0';
 
-    ctx.fillStyle = '#f5f5f5';
-    ctx.font = 'bold 28px Inter, sans-serif';
-    ctx.fillText(apl.tipo.toUpperCase(), 30, 62);
+    // Productor (grande, blanco)
+    ctx.fillStyle = '#ffffff'; ctx.font = 'bold 38px Inter,sans-serif';
+    ctx.fillText(productorNombre.toUpperCase(), 28, 80);
 
-    // Fecha + maquinaria (derecha)
+    // Fecha + máquina (derecha)
+    const maqTexto = apl.maquinaria==='M'?'MOSQUITO':apl.maquinaria==='D'?'DRON':'AVIÓN';
     ctx.textAlign = 'right';
-    ctx.fillStyle = '#f59e0b';
-    ctx.font = 'bold 22px Inter, sans-serif';
-    ctx.fillText(apl.fecha, W-30, 40);
-    ctx.fillStyle = '#a3a3a3';
-    ctx.font = '14px Inter, sans-serif';
-    const maqTexto = apl.maquinaria==='M'?'Mosquito':apl.maquinaria==='D'?'Dron':'Avión';
-    ctx.fillText(`${maqTexto} · ${apl.propio_alq}`, W-30, 62);
+    ctx.fillStyle = '#f59e0b'; ctx.font = 'bold 32px Inter,sans-serif';
+    ctx.fillText(fmtFecha(apl.fecha), W-28, 54);
+    ctx.fillStyle = '#666'; ctx.font = 'bold 12px Inter,sans-serif';
+    ctx.letterSpacing = '1px';
+    ctx.fillText(`${maqTexto}  ·  ${apl.propio_alq.toUpperCase()}${apl.contratista?' · '+apl.contratista.toUpperCase():''}`, W-28, 78);
+    ctx.letterSpacing = '0';
     ctx.textAlign = 'left';
 
-    // Divider ocre
-    ctx.strokeStyle = '#f59e0b';
-    ctx.lineWidth = 1.5;
-    ctx.setLineDash([4,4]);
-    ctx.beginPath(); ctx.moveTo(30, 88); ctx.lineTo(W-30, 88); ctx.stroke();
-    ctx.setLineDash([]);
+    // ── ZONA PRODUCTOS (título grande) ──
+    let y = 108;
+    ctx.fillStyle = '#0d1f16'; ctx.fillRect(8, y, W-8, prodBlockH);
+    ctx.fillStyle = '#2EAA6E'; ctx.fillRect(8, y, 4, prodBlockH);
+    ctx.strokeStyle = 'rgba(46,170,110,0.25)'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(8, y+prodBlockH); ctx.lineTo(W, y+prodBlockH); ctx.stroke();
+    y += 24;
+    ctx.fillStyle = '#ffffff'; ctx.font = 'bold 22px Inter,sans-serif';
+    pLines2.forEach(l => { ctx.fillText(l, 28, y); y += 32; });
+    y += 8;
 
-    // Productos
-    ctx.fillStyle = '#a3a3a3';
-    ctx.font = '10px Inter, sans-serif';
-    ctx.fillText('PRODUCTOS Y DOSIS', 30, 108);
-    ctx.fillStyle = '#f5f5f5';
-    ctx.font = 'bold 16px Inter, sans-serif';
-    const productos = apl.productos || '—';
-    // wrap text
-    const maxW = W - 60;
-    const words = productos.split(' ');
-    let line = '', y = 128;
-    for (const w of words) {
-      const test = line + w + ' ';
-      if (ctx.measureText(test).width > maxW && line) {
-        ctx.fillText(line, 30, y); line = w + ' '; y += 22;
-      } else line = test;
-    }
-    ctx.fillText(line, 30, y);
-
-    // Lotes
-    y += 30;
-    ctx.fillStyle = '#a3a3a3';
-    ctx.font = '10px Inter, sans-serif';
-    ctx.fillText('LOTES A APLICAR', 30, y);
-    y += 18;
-
-    const lotesInfo = lotesProductor.filter(l=>lotesSeleccionados.includes(l.id));
-    const colW = 260;
-    let col = 0, rowY = y;
-    lotesInfo.forEach((l, i) => {
-      const x = 30 + col * colW;
-      const lColor = cropColor(l.cultivo);
-      ctx.fillStyle = lColor;
-      ctx.font = 'bold 13px Inter, sans-serif';
-      ctx.fillText(`▸ ${l.nombre}`, x, rowY);
-      ctx.fillStyle = '#a3a3a3';
-      ctx.font = '11px Inter, sans-serif';
-      ctx.fillText(`${l.hectareas} ha${l.cultivo ? ' · '+l.cultivo : ''}`, x+14, rowY+16);
-      col++;
-      if (col >= 3) { col = 0; rowY += 40; }
-    });
-
-    // Total has + costo
-    const totalHas = lotesInfo.reduce((s,l)=>s+l.hectareas, 0);
-    const costoTotal = apl.costo_ha ? apl.costo_ha * totalHas : null;
-    y = H - 90;
-
-    ctx.strokeStyle = 'rgba(245,158,11,0.3)';
-    ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.moveTo(30, y); ctx.lineTo(W-30, y); ctx.stroke();
+    // ── ZONA LOTES (en línea corrida) ──
+    const loteZoneTop = y;
+    ctx.fillStyle = 'rgba(255,255,255,0.03)'; ctx.fillRect(8, loteZoneTop, W-8, lotesBlockH);
     y += 20;
+    ctx.fillStyle = '#444'; ctx.font = 'bold 9px Inter,sans-serif';
+    ctx.letterSpacing = '3px'; ctx.fillText('LOTES', 28, y); ctx.letterSpacing = '0';
+    y += 22;
+    ctx.fillStyle = '#f59e0b'; ctx.font = 'bold 15px Inter,sans-serif';
+    lLines.forEach(l => { ctx.fillText(l, 28, y); y += 24; });
+    // Total a la derecha
+    ctx.textAlign = 'right';
+    ctx.fillStyle = '#2EAA6E'; ctx.font = 'bold 17px Inter,sans-serif';
+    ctx.fillText(`TOTAL: ${totalHas} HA`, W-28, loteZoneTop + lotesBlockH - 12);
+    ctx.textAlign = 'left';
+    y = loteZoneTop + lotesBlockH;
 
-    ctx.fillStyle = '#f59e0b';
-    ctx.font = 'bold 14px Inter, sans-serif';
-    ctx.fillText(`TOTAL: ${totalHas} ha`, 30, y);
+    // ── PIE ──
+    ctx.strokeStyle = 'rgba(255,255,255,0.08)'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(28, y+10); ctx.lineTo(W-28, y+10); ctx.stroke();
+    y += 28;
+
+    const costoTotal = apl.costo_ha ? apl.costo_ha * totalHas : null;
     if (costoTotal) {
+      ctx.fillStyle = '#555'; ctx.font = '12px Inter,sans-serif';
+      ctx.fillText(`U$S ${apl.costo_ha}/HA · TOTAL U$S ${costoTotal.toLocaleString('es-AR')}`, 28, y);
+    }
+    if (apl.observaciones) {
+      ctx.fillStyle = '#555'; ctx.font = 'italic 12px Inter,sans-serif';
+      ctx.fillText(apl.observaciones.toUpperCase(), 28, costoTotal ? y+18 : y);
+    }
+    if (ingeniero?.matricula) {
       ctx.textAlign = 'right';
-      ctx.fillStyle = '#2EAA6E';
-      ctx.fillText(`U$S ${costoTotal.toLocaleString('es-AR')} total · U$S ${apl.costo_ha}/ha`, W-30, y);
+      ctx.fillStyle = '#333'; ctx.font = '11px Inter,sans-serif';
+      ctx.fillText(`M.P. ${ingeniero.matricula}`, W-28, H-14);
       ctx.textAlign = 'left';
     }
-
-    // Contratista
-    if (apl.contratista) {
-      ctx.fillStyle = '#a3a3a3';
-      ctx.font = '12px Inter, sans-serif';
-      ctx.fillText(`Contratista: ${apl.contratista}`, 30, y+20);
-    }
-
-    // Observaciones
-    if (apl.observaciones) {
-      ctx.fillStyle = '#525252';
-      ctx.font = 'italic 11px Inter, sans-serif';
-      ctx.fillText(apl.observaciones, 30, y+38);
-    }
-
-    // Firma ingeniero
-    ctx.textAlign = 'right';
-    ctx.fillStyle = '#f5f5f5';
-    ctx.font = 'bold 13px Inter, sans-serif';
-    ctx.fillText(ingeniero ? `Ing. Agr. ${ingeniero.nombre}${ingeniero.apellido?' '+ingeniero.apellido:''}` : 'Ingeniero Agrónomo', W-30, y+20);
-    if (ingeniero?.matricula) {
-      ctx.fillStyle = '#a3a3a3';
-      ctx.font = '11px Inter, sans-serif';
-      ctx.fillText(`M.P. ${ingeniero.matricula}`, W-30, y+36);
-    }
-    ctx.textAlign = 'left';
 
     // Descargar
     const url = canvas.toDataURL('image/png');
@@ -332,11 +304,12 @@ export function LoteDetail({ lote:initial, productorId, productorNombre, ingenie
   }
 
   function dibujarCanvasLote(canvas: HTMLCanvasElement, form: { fecha:string; tipo:string; productos:string; maquinaria:string; propio_alq:string; contratista:string; costo_ha:string; observaciones:string }) {
-    const prods = form.productos || '—';
+    const prods = (form.productos || '—').toUpperCase();
     const W = 900;
+    // Medir líneas de productos (zona prominente — ahora título grande)
     const tmpC = document.createElement('canvas');
     const tmpX = tmpC.getContext('2d')!;
-    tmpX.font = 'bold 17px Inter,sans-serif';
+    tmpX.font = 'bold 22px Inter,sans-serif';
     const pWords = prods.split(' '); let pLine = ''; const pLines: string[] = [];
     for (const w of pWords) {
       const test = pLine + w + ' ';
@@ -344,86 +317,107 @@ export function LoteDetail({ lote:initial, productorId, productorNombre, ingenie
       else pLine = test;
     }
     if (pLine.trim()) pLines.push(pLine.trim());
-    const prodBlockH = 22 + pLines.length * 26 + 18;
-    const H = Math.max(420, 100 + prodBlockH + 120);
+    const prodBlockH = 28 + pLines.length * 32 + 16;
+
+    // Lotes en línea corrida
+    const loteTxt = `${lote.nombre.toUpperCase()} (${lote.hectareas} HA)`;
+    const lotesBlockH = 50;
+    const H = Math.max(400, 110 + prodBlockH + lotesBlockH + 80);
     canvas.width = W; canvas.height = H;
     const ctx = canvas.getContext('2d')!;
 
+    // Fondo
     ctx.fillStyle = '#0a0a0a'; ctx.fillRect(0, 0, W, H);
-    ctx.strokeStyle = 'rgba(245,158,11,0.07)'; ctx.lineWidth = 1;
-    for (let row = 0; row < 25; row++) for (let col = 0; col < 20; col++) {
+
+    // Panal sutil
+    ctx.strokeStyle = 'rgba(46,170,110,0.06)'; ctx.lineWidth = 1;
+    for (let row = 0; row < 30; row++) for (let col = 0; col < 20; col++) {
       const ox = col*54+(row%2===0?0:27), oy = row*36-18;
       ctx.beginPath();
       [[27,0],[54,18],[54,36],[27,54],[0,36],[0,18]].forEach(([x,y],i) => i===0?ctx.moveTo(ox+x,oy+y):ctx.lineTo(ox+x,oy+y));
       ctx.closePath(); ctx.stroke();
     }
+
+    // Banda lateral izquierda verde
     const g = ctx.createLinearGradient(0,0,0,H);
     g.addColorStop(0,'#2EAA6E'); g.addColorStop(1,'#0d2818');
-    ctx.fillStyle = g; ctx.fillRect(0,0,7,H);
+    ctx.fillStyle = g; ctx.fillRect(0,0,8,H);
 
-    ctx.fillStyle = 'rgba(12,12,12,0.97)'; ctx.fillRect(7,0,W-7,98);
-    ctx.strokeStyle = 'rgba(245,158,11,0.4)'; ctx.lineWidth = 1.5;
-    ctx.beginPath(); ctx.moveTo(7,98); ctx.lineTo(W,98); ctx.stroke();
+    // ── HEADER (zona oscura top) ──
+    ctx.fillStyle = 'rgba(10,10,10,0.98)'; ctx.fillRect(8,0,W-8,108);
+    ctx.strokeStyle = 'rgba(255,255,255,0.08)'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(8,108); ctx.lineTo(W,108); ctx.stroke();
 
-    ctx.fillStyle = '#f59e0b'; ctx.font = 'bold 10px Inter,sans-serif';
-    ctx.letterSpacing = '4px'; ctx.fillText('ORDEN DE APLICACIÓN',28,26); ctx.letterSpacing = '0';
-    ctx.fillStyle = '#ffffff'; ctx.font = 'bold 36px Inter,sans-serif';
-    ctx.fillText((tiposSeleccionados2.length > 0 ? tiposSeleccionados2.join(' + ') : form.tipo).toUpperCase(),28,72);
-    ctx.fillStyle = '#777'; ctx.font = 'bold 13px Inter,sans-serif';
-    ctx.fillText(productorNombre.toUpperCase(),28,93);
+    // Eyebrow: tipo aplicación (pequeño, verde)
+    ctx.fillStyle = '#2EAA6E'; ctx.font = 'bold 10px Inter,sans-serif';
+    ctx.letterSpacing = '3px'; ctx.fillText((tiposSeleccionados2.length > 0 ? tiposSeleccionados2.join(' + ') : form.tipo).toUpperCase(), 28, 28); ctx.letterSpacing = '0';
 
-    const maqT = form.maquinaria==='M'?'Mosquito':form.maquinaria==='D'?'Dron':'Avión';
+    // Productor (grande, blanco)
+    ctx.fillStyle = '#ffffff'; ctx.font = 'bold 38px Inter,sans-serif';
+    ctx.fillText(productorNombre.toUpperCase(), 28, 80);
+
+    // Fecha (derecha, amarillo grande)
+    const maqT = form.maquinaria==='M'?'MOSQUITO':form.maquinaria==='D'?'DRON':'AVIÓN';
     ctx.textAlign = 'right';
-    ctx.fillStyle = '#f59e0b'; ctx.font = 'bold 28px Inter,sans-serif';
-    ctx.fillText(fmtFecha(form.fecha),W-28,46);
-    ctx.fillStyle = '#a3a3a3'; ctx.font = '14px Inter,sans-serif';
-    ctx.fillText(`${maqT} · ${form.propio_alq}${form.contratista?' · '+form.contratista.toUpperCase():''}`,W-28,70);
+    ctx.fillStyle = '#f59e0b'; ctx.font = 'bold 32px Inter,sans-serif';
+    ctx.fillText(fmtFecha(form.fecha), W-28, 54);
+    ctx.fillStyle = '#666'; ctx.font = 'bold 12px Inter,sans-serif';
+    ctx.letterSpacing = '1px';
+    ctx.fillText(`${maqT}  ·  ${form.propio_alq.toUpperCase()}${form.contratista?' · '+form.contratista.toUpperCase():''}`, W-28, 78);
+    ctx.letterSpacing = '0';
     ctx.textAlign = 'left';
 
-    let y = 98;
-    ctx.fillStyle = '#0f3320'; ctx.fillRect(7,y,W-7,prodBlockH);
-    ctx.strokeStyle = '#2EAA6E'; ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.moveTo(7,y+prodBlockH); ctx.lineTo(W,y+prodBlockH); ctx.stroke();
+    // ── ZONA PRODUCTOS (título grande — zona central prominente) ──
+    let y = 108;
+    ctx.fillStyle = '#0d1f16'; ctx.fillRect(8, y, W-8, prodBlockH);
+    // línea verde izquierda más gruesa
+    ctx.fillStyle = '#2EAA6E'; ctx.fillRect(8, y, 4, prodBlockH);
+    ctx.strokeStyle = 'rgba(46,170,110,0.25)'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(8, y+prodBlockH); ctx.lineTo(W, y+prodBlockH); ctx.stroke();
+
+    y += 24;
+    ctx.fillStyle = '#ffffff'; ctx.font = 'bold 22px Inter,sans-serif';
+    pLines.forEach(l => { ctx.fillText(l, 28, y); y += 32; });
+    y += 8;
+
+    // ── ZONA LOTES ──
+    const loteZoneTop = y;
+    ctx.fillStyle = 'rgba(255,255,255,0.03)'; ctx.fillRect(8, loteZoneTop, W-8, lotesBlockH);
+
     y += 18;
-    ctx.fillStyle = '#2EAA6E'; ctx.font = 'bold 9px Inter,sans-serif';
-    ctx.letterSpacing = '3px'; ctx.fillText('PRODUCTOS Y DOSIS',28,y); ctx.letterSpacing = '0';
-    y += 22;
-    ctx.fillStyle = '#ffffff'; ctx.font = 'bold 17px Inter,sans-serif';
-    pLines.forEach(l => { ctx.fillText(l,28,y); y += 26; });
-    y += 20;
-
     ctx.fillStyle = '#444'; ctx.font = 'bold 9px Inter,sans-serif';
-    ctx.letterSpacing = '3px'; ctx.fillText('LOTE',28,y); ctx.letterSpacing = '0';
-    y += 20;
-    const lc = cropColor(lote.cultivo);
-    ctx.fillStyle = lc; ctx.font = 'bold 16px Inter,sans-serif';
-    ctx.fillText(`▸ ${lote.nombre}`,28,y);
-    ctx.fillStyle = '#888'; ctx.font = '12px Inter,sans-serif';
-    ctx.fillText(`${lote.hectareas} ha${lote.cultivo?' · '+lote.cultivo:''}`,36,y+16);
-    y += 44;
+    ctx.letterSpacing = '3px'; ctx.fillText('LOTE', 28, y); ctx.letterSpacing = '0';
+    y += 22;
+    ctx.fillStyle = '#f59e0b'; ctx.font = 'bold 17px Inter,sans-serif';
+    ctx.fillText(loteTxt, 28, y);
+    // hectáreas a la derecha
+    ctx.textAlign = 'right';
+    ctx.fillStyle = '#2EAA6E'; ctx.font = 'bold 17px Inter,sans-serif';
+    ctx.fillText(`TOTAL: ${lote.hectareas} HA`, W-28, y);
+    ctx.textAlign = 'left';
+    y += lotesBlockH;
 
-    ctx.strokeStyle = 'rgba(245,158,11,0.4)'; ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.moveTo(22,y); ctx.lineTo(W-22,y); ctx.stroke();
+    // ── PIE ──
+    ctx.strokeStyle = 'rgba(255,255,255,0.08)'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(28, y); ctx.lineTo(W-28, y); ctx.stroke();
     y += 20;
-    ctx.fillStyle = '#f59e0b'; ctx.font = 'bold 15px Inter,sans-serif';
-    ctx.fillText(`TOTAL: ${lote.hectareas} ha`,28,y);
+
     const costoHa = parseFloat(form.costo_ha)||0;
     if (costoHa) {
-      ctx.textAlign = 'right';
-      ctx.fillStyle = '#2EAA6E'; ctx.font = 'bold 15px Inter,sans-serif';
-      ctx.fillText(`U$S ${(costoHa*lote.hectareas).toLocaleString('es-AR')} total · U$S ${costoHa}/ha`,W-28,y);
-      ctx.textAlign = 'left';
+      ctx.fillStyle = '#555'; ctx.font = '12px Inter,sans-serif';
+      ctx.fillText(`U$S ${costoHa}/HA · TOTAL U$S ${(costoHa*lote.hectareas).toLocaleString('es-AR')}`, 28, y);
     }
     if (form.observaciones) {
-      y += 22; ctx.fillStyle = '#666'; ctx.font = 'italic 12px Inter,sans-serif';
-      ctx.fillText(form.observaciones,28,y);
+      ctx.fillStyle = '#555'; ctx.font = 'italic 12px Inter,sans-serif';
+      ctx.fillText(form.observaciones.toUpperCase(), 28, costoHa ? y+18 : y);
     }
-    ctx.textAlign = 'right';
-    ctx.fillStyle = '#f5f5f5'; ctx.font = 'bold 13px Inter,sans-serif';
-    const nomIng = ingeniero ? `Ing. Agr. ${ingeniero.nombre}${ingeniero.apellido?' '+ingeniero.apellido:''}` : 'Ingeniero Agrónomo';
-    ctx.fillText(nomIng,W-28,H-26);
-    if (ingeniero?.matricula) { ctx.fillStyle = '#a3a3a3'; ctx.font = '11px Inter,sans-serif'; ctx.fillText(`M.P. ${ingeniero.matricula}`,W-28,H-11); }
-    ctx.textAlign = 'left';
+    // Matrícula discreta (sin nombre)
+    if (ingeniero?.matricula) {
+      ctx.textAlign = 'right';
+      ctx.fillStyle = '#333'; ctx.font = '11px Inter,sans-serif';
+      ctx.fillText(`M.P. ${ingeniero.matricula}`, W-28, H-14);
+      ctx.textAlign = 'left';
+    }
   }
 
   async function guardarAplicacionLote(generarImagen = true) {
