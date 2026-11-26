@@ -100,39 +100,37 @@ export function ProductorDetail({ productor, campanas, ingeniero }:{ productor:P
 
   const campana = campanas.find(c=>c.id===campanaId);
   const totalHas = lotes.reduce((s,l)=>s+Number(l.hectareas),0);
-  // Cultivos únicos diferenciando Soja 1° y Soja 2°
+  // Helper: normaliza cultivo_2 — soporta tanto 'Soja' (legacy) como 'Soja 2°' (nuevo)
+  const cultivo2Display = (l: Lote): string | null => {
+    if (!esCultivo(l.cultivo_2)) return null;
+    // Si cultivo_2 ya dice 'Soja 2°' lo devuelve tal cual
+    if (l.cultivo_2 === 'Soja 2°') return 'Soja 2°';
+    // Si cultivo_2 es 'Soja' y el primer cultivo es Trigo/Cebada → es Soja 2°
+    if (l.cultivo_2 === 'Soja' && ['Trigo','Cebada'].includes(l.cultivo??'')) return 'Soja 2°';
+    return l.cultivo_2!;
+  };
+
+  // Cultivos únicos para los tabs de filtro
   const cultivosUnicos = Array.from(new Set(lotes.flatMap(l => {
     const tags: string[] = [];
-    if (esCultivo(l.cultivo)) {
-      // Si tiene doble cultivo y el 1ro no es soja, la soja es 2°
-      const sojaEs2 = l.cultivo === 'Soja' && esCultivo(l.cultivo_2) && l.cultivo !== l.cultivo_2;
-      // Si el 1ro es trigo/cebada y el 2do es soja → 1ro=trigo, 2do=soja 2°
-      const primerEsBase = ['Trigo','Cebada'].includes(l.cultivo??'') && l.cultivo_2 === 'Soja';
-      tags.push(primerEsBase ? l.cultivo! : l.cultivo!);
-      if (primerEsBase) tags.push('Soja 2°');
-    }
-    if (esCultivo(l.cultivo_2) && !(['Trigo','Cebada'].includes(l.cultivo??'') && l.cultivo_2 === 'Soja')) {
-      tags.push(l.cultivo_2!);
-    }
+    if (esCultivo(l.cultivo)) tags.push(l.cultivo!);
+    const c2 = cultivo2Display(l);
+    if (c2) tags.push(c2);
     return tags;
   }))).sort();
 
-  const lotesFiltrados = filtroCultivo === 'Soja 2°'
-    ? lotes.filter(l => ['Trigo','Cebada'].includes(l.cultivo??'') && l.cultivo_2 === 'Soja')
-    : filtroCultivo === 'Soja'
-    ? lotes.filter(l => l.cultivo === 'Soja' || (l.cultivo_2 === 'Soja' && !['Trigo','Cebada'].includes(l.cultivo??'')))
-    : filtroCultivo
-    ? lotes.filter(l => l.cultivo === filtroCultivo || l.cultivo_2 === filtroCultivo)
-    : lotes;
+  // Función de filtro unificada
+  const matchFiltro = (l: Lote, filtro: string): boolean => {
+    if (!filtro) return true;
+    if (filtro === 'Soja 2°') return cultivo2Display(l) === 'Soja 2°';
+    if (filtro === 'Soja') return l.cultivo === 'Soja' && cultivo2Display(l) !== 'Soja 2°';
+    return l.cultivo === filtro || l.cultivo_2 === filtro;
+  };
+
+  const lotesFiltrados = lotes.filter(l => matchFiltro(l, filtroCultivo));
 
   // Lotes filtrados en modal aplicación
-  const lotesAplFiltrados = aplFiltro === 'Soja 2°'
-    ? lotes.filter(l => ['Trigo','Cebada'].includes(l.cultivo??'') && l.cultivo_2 === 'Soja')
-    : aplFiltro === 'Soja'
-    ? lotes.filter(l => l.cultivo === 'Soja' || (l.cultivo_2 === 'Soja' && !['Trigo','Cebada'].includes(l.cultivo??'')))
-    : aplFiltro
-    ? lotes.filter(l => l.cultivo === aplFiltro || l.cultivo_2 === aplFiltro)
-    : lotes;
+  const lotesAplFiltrados = lotes.filter(l => matchFiltro(l, aplFiltro));
   const hasTotalesApl = lotesSeleccionados.reduce((s,lid)=>{
     const l=lotes.find(x=>x.id===lid); return s+(l?.hectareas||0);
   },0);
@@ -677,10 +675,12 @@ export function ProductorDetail({ productor, campanas, ingeniero }:{ productor:P
         <div className="stagger-grid grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
           {lotesFiltrados.map(l=>{
             const actual=esCultivo(l.cultivo)?l.cultivo:esCultivo(l.cultivo_2)?l.cultivo_2:null;
-            const esSegundoCultivo = actual === 'Soja' && esCultivo(l.cultivo) && esCultivo(l.cultivo_2) && l.cultivo !== 'Soja';
-            const styleKey = esSegundoCultivo ? 'Soja 2°' : (actual ?? '');
+            const styleKey = actual ?? '';
             const s = CROP_STYLES[styleKey] ?? DEFAULT_STYLE;
-            const cultivos = [l.cultivo, l.cultivo_2].filter(Boolean);
+            // Badges: primer cultivo + segundo cultivo con label normalizado
+            const badgePrimero = esCultivo(l.cultivo) ? l.cultivo! : null;
+            const badgeSegundo = cultivo2Display(l); // ya normaliza a 'Soja 2°'
+            const cultivos = [badgePrimero, badgeSegundo].filter(Boolean) as string[];
             return (
               <div key={l.id}
                 className="aspect-square rounded-card flex flex-col relative overflow-hidden group transition-all duration-150 hover:-translate-y-1 hover:shadow-lg bg-white"
@@ -707,18 +707,18 @@ export function ProductorDetail({ productor, campanas, ingeniero }:{ productor:P
                   {/* Cultivo badge + fecha */}
                   <div>
                     <div className="flex flex-wrap gap-1 mb-1.5">
-                      {cultivos.filter(c => esCultivo(c)).map((c, i) => {
-                        const cs = CROP_STYLES[c ?? ''] ?? DEFAULT_STYLE;
-                        const isActual = c === actual;
+                      {cultivos.map((c, i) => {
+                        const cs = CROP_STYLES[c] ?? DEFAULT_STYLE;
+                        const isActual = i === 0;
                         return (
                           <span key={c}
                             className="text-xs font-black px-2 py-0.5 rounded"
                             style={isActual
                               ? { background: cs.badgeBg, color: cs.badgeText, border: `1px solid ${cs.badgeBorder}` }
-                              : { background: '#f1f5f9', color: '#94a3b8', border: '1px solid #e2e8f0' }
+                              : { background: cs.badgeBg, color: cs.badgeText, border: `1px solid ${cs.badgeBorder}`, opacity: 0.8 }
                             }
                           >
-                            {c}{cultivos.filter(x => esCultivo(x)).length > 1 && i === 1 ? ' 2°' : ''}
+                            {c}
                           </span>
                         );
                       })}
