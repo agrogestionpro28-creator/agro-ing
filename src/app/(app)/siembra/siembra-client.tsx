@@ -16,6 +16,9 @@ type FilaLote = {
   cultivo: string
   variedad: string
   fecha_siembra: string
+  cultivo_2: string
+  variedad_2: string
+  fecha_siembra_2: string
   ferti_id: string | null
   ferti_productos: string
   ferti_fecha: string
@@ -23,6 +26,9 @@ type FilaLote = {
   guardando: boolean
   ok: boolean
 }
+
+// Cultivos posibles para segunda siembra
+const CULTIVOS_2 = ['Soja 2°', 'Maíz', 'Sorgo', 'Girasol']
 
 const CULT_STYLE: Record<string, { strip: string; badge: string; text: string }> = {
   'Soja':    { strip: '#22c55e', badge: '#f0fdf4', text: '#15803d' },
@@ -57,6 +63,7 @@ export function SiembraClient({ productores, campanas }: {
   const [filas, setFilas]                      = useState<FilaLote[]>([])
   const [cargando, setCargando]                = useState(false)
   const [guardandoTodo, setGuardandoTodo]      = useState(false)
+  const [panelSegunda, setPanelSegunda]        = useState<string | null>(null) // lote_id con panel abierto
 
   function syncUrl(campana: string, productor: string, cultivo: string) {
     const params = new URLSearchParams()
@@ -84,7 +91,7 @@ export function SiembraClient({ productores, campanas }: {
       // Construir query según si es todos o uno específico
       let query = (sb as any)
         .from('lotes')
-        .select('id, nombre, hectareas, cultivo, variedad, fecha_siembra, productor_id')
+        .select('id, nombre, hectareas, cultivo, variedad, fecha_siembra, cultivo_2, variedad_2, fecha_siembra_2, productor_id')
         .eq('campana_id', campanaId)
         .order('nombre')
 
@@ -122,6 +129,9 @@ export function SiembraClient({ productores, campanas }: {
         cultivo: l.cultivo ?? '',
         variedad: l.variedad ?? '',
         fecha_siembra: l.fecha_siembra ?? '',
+        cultivo_2: l.cultivo_2 ?? '',
+        variedad_2: l.variedad_2 ?? '',
+        fecha_siembra_2: l.fecha_siembra_2 ?? '',
         ferti_id: fertiMap[l.id]?.id ?? null,
         ferti_productos: fertiMap[l.id]?.productos ?? '',
         ferti_fecha: fertiMap[l.id]?.fecha ?? '',
@@ -148,6 +158,9 @@ export function SiembraClient({ productores, campanas }: {
       await (sb as any).from('lotes').update({
         variedad: fila.variedad || null,
         fecha_siembra: fila.fecha_siembra || null,
+        cultivo_2: fila.cultivo_2 || null,
+        variedad_2: fila.variedad_2 || null,
+        fecha_siembra_2: fila.fecha_siembra_2 || null,
       }).eq('id', loteId)
 
       if (fila.ferti_productos.trim()) {
@@ -319,7 +332,7 @@ export function SiembraClient({ productores, campanas }: {
 
       {/* TABLA — un productor */}
       {!cargando && productorId !== TODOS && filasFiltradas.length > 0 && (
-        <TablaEditable filas={filasFiltradas} mostrarProductor={false} onSetFila={setFila} onGuardar={guardarFila} />
+        <TablaEditable filas={filasFiltradas} mostrarProductor={false} onSetFila={setFila} onGuardar={guardarFila} panelSegunda={panelSegunda} setPanelSegunda={setPanelSegunda} />
       )}
 
       {/* TABLA — todos los productores (agrupada) */}
@@ -341,7 +354,7 @@ export function SiembraClient({ productores, campanas }: {
                   {grupo.filas.filter(f => f.fecha_siembra && f.variedad).length}/{grupo.filas.length} completos
                 </span>
               </div>
-              <TablaEditable filas={grupo.filas} mostrarProductor={false} onSetFila={setFila} onGuardar={guardarFila} />
+              <TablaEditable filas={grupo.filas} mostrarProductor={false} onSetFila={setFila} onGuardar={guardarFila} panelSegunda={panelSegunda} setPanelSegunda={setPanelSegunda} />
             </div>
           ))}
         </div>
@@ -359,15 +372,22 @@ export function SiembraClient({ productores, campanas }: {
   )
 }
 
+// Cultivos que pueden tener segunda siembra
+const CULTIVOS_CON_SEGUNDA = ['Trigo', 'Cebada']
+
 // ── Tabla editable reutilizable ───────────────────────────
 function TablaEditable({
-  filas, mostrarProductor, onSetFila, onGuardar
+  filas, mostrarProductor, onSetFila, onGuardar, panelSegunda, setPanelSegunda
 }: {
   filas: FilaLote[]
   mostrarProductor: boolean
   onSetFila: (loteId: string, campo: Partial<FilaLote>) => void
   onGuardar: (loteId: string) => void
+  panelSegunda: string | null
+  setPanelSegunda: (id: string | null) => void
 }) {
+  const colSpan = mostrarProductor ? 7 : 6
+
   return (
     <div className="overflow-x-auto">
       <table className="w-full border-collapse min-w-[640px]">
@@ -381,102 +401,205 @@ function TablaEditable({
             <th className="text-left py-3 px-3 text-[10px] font-bold uppercase tracking-wider text-mid bg-slate-50/80 w-[140px]">Fecha siembra</th>
             <th className="text-left py-3 px-3 text-[10px] font-bold uppercase tracking-wider text-mid bg-slate-50/80">Variedad / Híbrido</th>
             <th className="text-left py-3 px-3 text-[10px] font-bold uppercase tracking-wider text-mid bg-slate-50/80">Fertilización arranque</th>
-            <th className="bg-slate-50/80 w-20" />
+            <th className="bg-slate-50/80 w-24" />
           </tr>
         </thead>
-        <tbody className="divide-y divide-slate-100">
+        <tbody>
           {filas.map((fila) => {
             const cs = cultStyle(fila.cultivo)
             const tieneData = fila.fecha_siembra || fila.variedad
+            const puedeSegunda = CULTIVOS_CON_SEGUNDA.some(c => fila.cultivo?.startsWith(c))
+            const tieneSegunda = !!fila.cultivo_2
+            const panelAbierto = panelSegunda === fila.lote_id
+            const cs2 = fila.cultivo_2 ? cultStyle(fila.cultivo_2) : cultStyle('Soja 2°')
 
             return (
-              <tr
-                key={fila.lote_id}
-                className={`
-                  group transition-colors
-                  ${fila.ok ? 'bg-green-50/60' : ''}
-                  ${fila.sucio && !fila.ok ? 'bg-amber-50/60' : ''}
-                  hover:bg-slate-50/80
-                `}
-              >
-                {mostrarProductor && (
-                  <td className="py-2 px-4 text-xs text-mid font-semibold">{fila.productor_nombre}</td>
-                )}
+              <>
+                {/* Fila principal */}
+                <tr
+                  key={fila.lote_id}
+                  className={`
+                    group transition-colors border-t border-slate-100
+                    ${fila.ok ? 'bg-green-50/60' : ''}
+                    ${fila.sucio && !fila.ok ? 'bg-amber-50/60' : ''}
+                    hover:bg-slate-50/80
+                  `}
+                >
+                  {mostrarProductor && (
+                    <td className="py-2 px-4 text-xs text-mid font-semibold">{fila.productor_nombre}</td>
+                  )}
 
-                {/* Lote */}
-                <td className="py-2 px-4">
-                  <div className="flex items-center gap-2">
-                    <span
-                      className="text-[9px] font-black px-1.5 py-0.5 rounded shrink-0"
-                      style={{ background: cs.strip, color: '#fff' }}
-                    >
-                      {fila.cultivo?.slice(0, 3).toUpperCase() || '---'}
-                    </span>
-                    <div>
-                      <p className="text-hi font-semibold text-xs leading-tight">{fila.nombre}</p>
-                      {!tieneData && (
-                        <p className="text-[9px] text-red-400 font-bold">sin datos</p>
+                  {/* Lote */}
+                  <td className="py-2 px-4">
+                    <div className="flex items-center gap-2">
+                      <span
+                        className="text-[9px] font-black px-1.5 py-0.5 rounded shrink-0"
+                        style={{ background: cs.strip, color: '#fff' }}
+                      >
+                        {fila.cultivo?.slice(0, 3).toUpperCase() || '---'}
+                      </span>
+                      <div>
+                        <p className="text-hi font-semibold text-xs leading-tight">{fila.nombre}</p>
+                        {!tieneData && <p className="text-[9px] text-red-400 font-bold">sin datos</p>}
+                        {tieneSegunda && !panelAbierto && (
+                          <p className="text-[9px] font-bold" style={{ color: cs2.text }}>
+                            2°: {fila.cultivo_2}{fila.fecha_siembra_2 ? ` · ${fila.fecha_siembra_2}` : ''}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </td>
+
+                  {/* Ha */}
+                  <td className="text-center py-2 px-2 text-mid text-xs font-mono">{fila.hectareas}</td>
+
+                  {/* Fecha siembra */}
+                  <td className="py-1.5 px-2">
+                    <input
+                      type="date"
+                      value={fila.fecha_siembra}
+                      onChange={e => onSetFila(fila.lote_id, { fecha_siembra: e.target.value })}
+                      className="field py-1.5 text-xs"
+                      style={{ minWidth: '128px' }}
+                    />
+                  </td>
+
+                  {/* Variedad */}
+                  <td className="py-1.5 px-2">
+                    <input
+                      type="text"
+                      value={fila.variedad}
+                      onChange={e => onSetFila(fila.lote_id, { variedad: e.target.value })}
+                      placeholder="Ej: DM 4670, NK Iudex..."
+                      className="field py-1.5 text-xs"
+                    />
+                  </td>
+
+                  {/* Fertilización */}
+                  <td className="py-1.5 px-2">
+                    <input
+                      type="text"
+                      value={fila.ferti_productos}
+                      onChange={e => onSetFila(fila.lote_id, { ferti_productos: e.target.value })}
+                      placeholder="Ej: 100 kg MAP + 50 kg Urea"
+                      className="field py-1.5 text-xs"
+                    />
+                  </td>
+
+                  {/* Acciones */}
+                  <td className="py-1.5 px-2 text-center">
+                    <div className="flex items-center justify-center gap-1.5">
+                      {/* Botón segunda siembra */}
+                      {puedeSegunda && (
+                        <button
+                          onClick={() => setPanelSegunda(panelAbierto ? null : fila.lote_id)}
+                          className="text-[10px] font-black px-2 py-1 rounded-lg transition-all border shrink-0"
+                          style={tieneSegunda
+                            ? { background: cs2.badge, color: cs2.text, borderColor: cs2.strip }
+                            : { background: '#f0fdf4', color: '#15803d', borderColor: '#86efac' }
+                          }
+                          title={tieneSegunda ? 'Ver/editar 2° siembra' : 'Agregar 2° cultivo'}
+                        >
+                          {tieneSegunda ? `✓ 2°` : `+ 2°`}
+                        </button>
+                      )}
+                      {/* Guardar */}
+                      {fila.guardando ? (
+                        <span className="text-mid text-xs animate-pulse">...</span>
+                      ) : fila.ok ? (
+                        <span className="text-afa text-xs font-bold">✓</span>
+                      ) : fila.sucio ? (
+                        <button
+                          onClick={() => onGuardar(fila.lote_id)}
+                          className="text-xs font-bold text-amber-600 hover:text-hi bg-amber-50 hover:bg-amber-100 px-2.5 py-1 rounded-lg transition-all border border-amber-200"
+                        >
+                          Guardar
+                        </button>
+                      ) : (
+                        <span className="text-slate-300 text-xs opacity-0 group-hover:opacity-60">—</span>
                       )}
                     </div>
-                  </div>
-                </td>
+                  </td>
+                </tr>
 
-                {/* Ha */}
-                <td className="text-center py-2 px-2 text-mid text-xs font-mono">{fila.hectareas}</td>
+                {/* Panel segunda siembra — inline debajo */}
+                {panelAbierto && (
+                  <tr key={`${fila.lote_id}-segunda`} className="border-t border-green-100">
+                    <td colSpan={colSpan} className="p-0">
+                      <div
+                        className="px-5 py-4 flex flex-wrap gap-3 items-end"
+                        style={{ background: '#f0fdf4', borderLeft: '4px solid #22c55e' }}
+                      >
+                        <div className="flex items-center gap-2 mr-2">
+                          <span className="text-sm">🌱</span>
+                          <span className="text-xs font-black text-green-800 uppercase tracking-wider">2° Cultivo — {fila.nombre}</span>
+                        </div>
 
-                {/* Fecha siembra */}
-                <td className="py-1.5 px-2">
-                  <input
-                    type="date"
-                    value={fila.fecha_siembra}
-                    onChange={e => onSetFila(fila.lote_id, { fecha_siembra: e.target.value })}
-                    className="field py-1.5 text-xs"
-                    style={{ minWidth: '128px' }}
-                  />
-                </td>
+                        {/* Cultivo */}
+                        <div className="flex flex-col gap-1">
+                          <label className="text-[10px] font-bold uppercase tracking-wider text-green-700">Cultivo</label>
+                          <select
+                            value={fila.cultivo_2}
+                            onChange={e => onSetFila(fila.lote_id, { cultivo_2: e.target.value })}
+                            className="field py-1.5 text-xs min-w-[130px]"
+                          >
+                            <option value="">Seleccioná...</option>
+                            {CULTIVOS_2.map(c => <option key={c} value={c}>{c}</option>)}
+                          </select>
+                        </div>
 
-                {/* Variedad */}
-                <td className="py-1.5 px-2">
-                  <input
-                    type="text"
-                    value={fila.variedad}
-                    onChange={e => onSetFila(fila.lote_id, { variedad: e.target.value })}
-                    placeholder="Ej: DM 4670, NK Iudex..."
-                    className="field py-1.5 text-xs"
-                  />
-                </td>
+                        {/* Fecha siembra 2 */}
+                        <div className="flex flex-col gap-1">
+                          <label className="text-[10px] font-bold uppercase tracking-wider text-green-700">Fecha siembra</label>
+                          <input
+                            type="date"
+                            value={fila.fecha_siembra_2}
+                            onChange={e => onSetFila(fila.lote_id, { fecha_siembra_2: e.target.value })}
+                            className="field py-1.5 text-xs"
+                            style={{ minWidth: '128px' }}
+                          />
+                        </div>
 
-                {/* Fertilización */}
-                <td className="py-1.5 px-2">
-                  <input
-                    type="text"
-                    value={fila.ferti_productos}
-                    onChange={e => onSetFila(fila.lote_id, { ferti_productos: e.target.value })}
-                    placeholder="Ej: 100 kg MAP + 50 kg Urea"
-                    className="field py-1.5 text-xs"
-                  />
-                </td>
+                        {/* Variedad 2 */}
+                        <div className="flex flex-col gap-1 flex-1 min-w-[180px]">
+                          <label className="text-[10px] font-bold uppercase tracking-wider text-green-700">Variedad / Híbrido</label>
+                          <input
+                            type="text"
+                            value={fila.variedad_2}
+                            onChange={e => onSetFila(fila.lote_id, { variedad_2: e.target.value })}
+                            placeholder="Ej: DM 50E25, SY 879..."
+                            className="field py-1.5 text-xs"
+                          />
+                        </div>
 
-                {/* Estado / Acción */}
-                <td className="py-1.5 px-3 text-center">
-                  {fila.guardando ? (
-                    <span className="text-mid text-xs animate-pulse">guardando</span>
-                  ) : fila.ok ? (
-                    <span className="inline-flex items-center gap-1 text-afa text-xs font-bold">
-                      <span className="text-sm">✓</span> Guardado
-                    </span>
-                  ) : fila.sucio ? (
-                    <button
-                      onClick={() => onGuardar(fila.lote_id)}
-                      className="text-xs font-bold text-amber-600 hover:text-hi bg-amber-50 hover:bg-amber-100 px-2.5 py-1 rounded-lg transition-all border border-amber-200"
-                    >
-                      Guardar
-                    </button>
-                  ) : (
-                    <span className="text-slate-300 text-xs opacity-0 group-hover:opacity-60 transition-opacity">—</span>
-                  )}
-                </td>
-              </tr>
+                        {/* Botones */}
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => { onGuardar(fila.lote_id); setPanelSegunda(null) }}
+                            className="text-xs font-black px-3 py-1.5 rounded-lg bg-green-600 hover:bg-green-700 text-white transition-all"
+                          >
+                            Guardar
+                          </button>
+                          {fila.cultivo_2 && (
+                            <button
+                              onClick={() => { onSetFila(fila.lote_id, { cultivo_2: '', fecha_siembra_2: '', variedad_2: '' }); onGuardar(fila.lote_id); setPanelSegunda(null) }}
+                              className="text-xs font-bold px-3 py-1.5 rounded-lg bg-white border border-red-200 text-red-500 hover:bg-red-50 transition-all"
+                            >
+                              Quitar
+                            </button>
+                          )}
+                          <button
+                            onClick={() => setPanelSegunda(null)}
+                            className="text-xs text-mid hover:text-hi px-2 py-1.5"
+                          >
+                            Cerrar
+                          </button>
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                )}
+              </>
             )
           })}
         </tbody>
