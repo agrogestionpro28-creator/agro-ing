@@ -21,7 +21,7 @@ const CULTIVO_ABREV: Record<string,string> = {
   'Soja':'SOJ', 'Maíz':'MAI', 'Trigo':'TRI', 'Girasol':'GIR',
   'Sorgo':'SOR', 'Cebada':'CEB', 'Alfalfa':'ALF', 'Otro':'OTR',
 };
-const CULTIVOS_VALIDOS = ['Soja','Maíz','Trigo','Girasol','Sorgo','Cebada','Alfalfa','Otro'];
+const CULTIVOS_VALIDOS = ['Soja','Soja 2°','Maíz','Trigo','Girasol','Sorgo','Cebada','Alfalfa','Otro'];
 
 function abrevCultivo(c: string | null): string {
   if (!c) return '';
