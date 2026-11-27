@@ -9,7 +9,7 @@ declare const XLSX: any;
 
 type Productor = { id:string; razon_social:string; cuit:string|null; localidad:string|null; telefono:string|null; email:string|null };
 type Campana = { id:string; nombre:string; fecha_inicio:string; fecha_fin:string };
-type Lote = { id:string; nombre:string; hectareas:number; cultivo:string|null; cultivo_2:string|null; variedad:string|null; fecha_siembra:string|null; notas:string|null };
+type Lote = { id:string; nombre:string; hectareas:number; cultivo:string|null; cultivo_2:string|null; variedad:string|null; variedad_2:string|null; fecha_siembra:string|null; fecha_siembra_2:string|null; notas:string|null };
 type Ingeniero = { nombre:string; apellido:string|null; matricula:string|null };
 
 const TIPOS_BASE = ['Herbicida','Fungicida','Insecticida','Fertilizante','Inoculante','Otro'];
@@ -140,7 +140,7 @@ export function ProductorDetail({ productor, campanas, ingeniero }:{ productor:P
   async function fetchLotes(){
     setLoading(true);
     const {data}=await (createClient() as any).from('lotes')
-      .select('id,nombre,hectareas,cultivo,cultivo_2,variedad,fecha_siembra,notas')
+      .select('id,nombre,hectareas,cultivo,cultivo_2,variedad,variedad_2,fecha_siembra,fecha_siembra_2,notas')
       .eq('productor_id',productor.id).eq('campana_id',campanaId).order('nombre');
     const sorted = (data??[]).sort((a:any,b:any) =>
       a.nombre.localeCompare(b.nombre, 'es', {numeric:true, sensitivity:'base'}));
@@ -674,13 +674,19 @@ export function ProductorDetail({ productor, campanas, ingeniero }:{ productor:P
       ):(
         <div className="stagger-grid grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
           {lotesFiltrados.map(l=>{
-            const actual=esCultivo(l.cultivo)?l.cultivo:esCultivo(l.cultivo_2)?l.cultivo_2:null;
-            const styleKey = actual ?? '';
+            // Si estamos filtrando por Soja 2°, mostrar como cultivo principal la segunda siembra
+            const viendoSegunda = filtroCultivo === 'Soja 2°' && cultivo2Display(l) === 'Soja 2°'
+            const styleKey = viendoSegunda ? 'Soja 2°' : (esCultivo(l.cultivo) ? l.cultivo! : (esCultivo(l.cultivo_2) ? l.cultivo_2! : ''))
             const s = CROP_STYLES[styleKey] ?? DEFAULT_STYLE;
             // Badges: primer cultivo + segundo cultivo con label normalizado
             const badgePrimero = esCultivo(l.cultivo) ? l.cultivo! : null;
             const badgeSegundo = cultivo2Display(l); // ya normaliza a 'Soja 2°'
-            const cultivos = [badgePrimero, badgeSegundo].filter(Boolean) as string[];
+            const cultivos = viendoSegunda
+              ? [badgeSegundo!, badgePrimero!].filter(Boolean) as string[]  // invertir: Soja 2° primero
+              : [badgePrimero, badgeSegundo].filter(Boolean) as string[];
+            // Fecha a mostrar: si viendo segunda, usar fecha_siembra_2
+            const fechaMostrar = viendoSegunda ? (l.fecha_siembra_2 ?? l.fecha_siembra) : l.fecha_siembra
+            const variedadMostrar = viendoSegunda ? (l.variedad_2 ?? l.variedad) : l.variedad
             return (
               <div key={l.id}
                 className="aspect-square rounded-card flex flex-col relative overflow-hidden group transition-all duration-150 hover:-translate-y-1 hover:shadow-lg bg-white"
@@ -693,8 +699,8 @@ export function ProductorDetail({ productor, campanas, ingeniero }:{ productor:P
                   {/* Nombre */}
                   <div>
                     <p className="font-black text-base leading-tight line-clamp-2" style={{ color: '#0f172a' }}>{l.nombre}</p>
-                    {l.variedad && (
-                      <p className="text-xs mt-0.5 truncate font-semibold" style={{ color: '#475569' }}>{l.variedad}</p>
+                    {variedadMostrar && (
+                      <p className="text-xs mt-0.5 truncate font-semibold" style={{ color: '#475569' }}>{variedadMostrar}</p>
                     )}
                   </div>
 
@@ -723,9 +729,9 @@ export function ProductorDetail({ productor, campanas, ingeniero }:{ productor:P
                         );
                       })}
                     </div>
-                    {l.fecha_siembra && (
+                    {fechaMostrar && (
                       <div className="text-xs font-black" style={{ color: '#0f172a' }}>
-                        Siem: {fmtFecha(l.fecha_siembra)}
+                        Siem: {fmtFecha(fechaMostrar)}
                       </div>
                     )}
                   </div>
