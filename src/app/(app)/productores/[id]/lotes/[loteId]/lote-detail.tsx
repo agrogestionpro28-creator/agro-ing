@@ -25,7 +25,7 @@ function cropColor(c: string | null) {
   return '#a3a3a3';
 }
 
-type Lote = { id:string; productor_id:string; campana_id:string; nombre:string; hectareas:number; cultivo:string|null; cultivo_2:string|null; variedad:string|null; fecha_siembra:string|null; fecha_cosecha:string|null; notas:string|null; tecnologia_soja:string|null };
+type Lote = { id:string; productor_id:string; campana_id:string; nombre:string; hectareas:number; cultivo:string|null; cultivo_2:string|null; variedad:string|null; variedad_2:string|null; fecha_siembra:string|null; fecha_siembra_2:string|null; fecha_cosecha:string|null; notas:string|null; tecnologia_soja:string|null };
 type LoteSimple = { id:string; nombre:string; hectareas:number; cultivo:string|null };
 type Aplicacion = { id:string; lote_id:string; fecha:string; tipo:string; productos:string|null; maquinaria:string; propio_alq:string; contratista:string|null; costo_ha:number|null; hectareas_apl:number|null; observaciones:string|null; imagen_url:string|null };
 type Ingeniero = { nombre:string; apellido:string|null; matricula:string|null; telefono:string|null };
@@ -43,7 +43,7 @@ export function LoteDetail({ lote:initial, productorId, productorNombre, ingenie
   const [err, setErr] = useState('');
   const [lotesSeleccionados, setLotesSeleccionados] = useState<string[]>([initial.id]);
   const [aplForm, setAplForm] = useState({...APL_VACIO, hectareas_apl:String(initial.hectareas)});
-  const [form, setForm] = useState({ nombre:initial.nombre, hectareas:String(initial.hectareas), cultivo:initial.cultivo??'', cultivo_2:initial.cultivo_2??'', variedad:initial.variedad??'', fecha_siembra:initial.fecha_siembra??'', notas:initial.notas??'', tecnologia_soja:initial.tecnologia_soja??'' });
+  const [form, setForm] = useState({ nombre:initial.nombre, hectareas:String(initial.hectareas), cultivo:initial.cultivo??'', cultivo_2:initial.cultivo_2??'', variedad:initial.variedad??'', variedad_2:initial.variedad_2??'', fecha_siembra:initial.fecha_siembra??'', fecha_siembra_2:initial.fecha_siembra_2??'', notas:initial.notas??'', tecnologia_soja:initial.tecnologia_soja??'' });
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [showAplForm2, setShowAplForm2] = useState(false);
   const [aplForm2, setAplForm2] = useState({ fecha: new Date().toISOString().slice(0,10), tipo: 'Herbicida', productos: '', maquinaria: 'M', propio_alq: 'Propio', contratista: '', costo_ha: '', observaciones: '' });
@@ -110,8 +110,9 @@ export function LoteDetail({ lote:initial, productorId, productorNombre, ingenie
     const { data, error } = await (createClient() as any).from('lotes').update({
       nombre:form.nombre.trim(), hectareas:parseFloat(form.hectareas)||0,
       cultivo:form.cultivo||null, cultivo_2:form.cultivo_2||null,
-      variedad:form.variedad||null, fecha_siembra:form.fecha_siembra||null, notas:form.notas||null,
-      tecnologia_soja:form.tecnologia_soja||null,
+      variedad:form.variedad||null, variedad_2:form.variedad_2||null,
+      fecha_siembra:form.fecha_siembra||null, fecha_siembra_2:form.fecha_siembra_2||null,
+      notas:form.notas||null, tecnologia_soja:form.tecnologia_soja||null,
     }).eq('id', lote.id).select().single();
     setSaving(false);
     if (error) { setErr(error.message); return; }
@@ -641,9 +642,15 @@ export function LoteDetail({ lote:initial, productorId, productorNombre, ingenie
           <div className="flex flex-wrap gap-x-3 gap-y-1 text-sm">
             <span className="text-hi font-bold">{lote.hectareas} ha</span>
             {lote.cultivo && <span style={{color:cropColor(lote.cultivo)}} className="font-semibold">{lote.cultivo}{lote.cultivo_2?' →':''}</span>}
-            {lote.cultivo_2 && <span style={{color:cropColor(lote.cultivo_2)}} className="font-semibold">{lote.cultivo_2} 2°</span>}
+            {lote.cultivo_2 && <span style={{color:cropColor(lote.cultivo_2)}} className="font-semibold">{lote.cultivo_2 === 'Soja' ? 'Soja 2°' : lote.cultivo_2}</span>}
             {lote.variedad && <span className="text-mid">· {lote.variedad}</span>}
             {lote.fecha_siembra && <span className="text-mid">· Siem: {fmtFecha(lote.fecha_siembra)}</span>}
+            {lote.cultivo_2 && lote.fecha_siembra_2 && (
+              <span className="text-mid">· 2° Siem: {fmtFecha(lote.fecha_siembra_2)}</span>
+            )}
+            {lote.cultivo_2 && lote.variedad_2 && (
+              <span className="text-mid">· {lote.variedad_2}</span>
+            )}
           </div>
           {lote.fecha_siembra && !lote.fecha_cosecha && <p className="text-lo text-xs mt-1">📅 Siembra: {fmtFecha(lote.fecha_siembra)}</p>}
           {lote.fecha_cosecha && <p className="text-money text-xs mt-1 font-semibold">🌾 Cosecha: {fmtFecha(lote.fecha_cosecha)}</p>}
@@ -662,6 +669,10 @@ export function LoteDetail({ lote:initial, productorId, productorNombre, ingenie
             <div><label className="block text-xs font-semibold text-mid mb-1 uppercase tracking-wider">2° Cultivo</label><select value={form.cultivo_2} onChange={e=>setForm(f=>({...f,cultivo_2:e.target.value}))} className="field"><option value="">—</option>{CULTIVOS.map(c=><option key={c}>{c}</option>)}</select></div>
             <div><label className="block text-xs font-semibold text-mid mb-1 uppercase tracking-wider">Variedad</label><input value={form.variedad} onChange={e=>setForm(f=>({...f,variedad:e.target.value}))} className="field" /></div>
             <div><label className="block text-xs font-semibold text-mid mb-1 uppercase tracking-wider">Fecha siembra</label><input type="date" value={form.fecha_siembra} onChange={e=>setForm(f=>({...f,fecha_siembra:e.target.value}))} className="field" /></div>
+            {form.cultivo_2 && <>
+              <div><label className="block text-xs font-semibold text-mid mb-1 uppercase tracking-wider">Variedad 2°</label><input value={form.variedad_2} onChange={e=>setForm(f=>({...f,variedad_2:e.target.value}))} placeholder="Variedad segunda siembra" className="field" /></div>
+              <div><label className="block text-xs font-semibold text-mid mb-1 uppercase tracking-wider">Fecha siembra 2°</label><input type="date" value={form.fecha_siembra_2} onChange={e=>setForm(f=>({...f,fecha_siembra_2:e.target.value}))} className="field" /></div>
+            </>}
           </div>
           <div><label className="block text-xs font-semibold text-mid mb-1 uppercase tracking-wider">Notas</label><textarea rows={2} value={form.notas} onChange={e=>setForm(f=>({...f,notas:e.target.value}))} className="field resize-none" /></div>
           <div>
