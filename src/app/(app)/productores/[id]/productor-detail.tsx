@@ -685,8 +685,8 @@ export function ProductorDetail({ productor, campanas, ingeniero }:{ productor:P
               ? [badgeSegundo!, badgePrimero!].filter(Boolean) as string[]  // invertir: Soja 2° primero
               : [badgePrimero, badgeSegundo].filter(Boolean) as string[];
             // Fecha a mostrar: si viendo segunda, usar fecha_siembra_2
-            const fechaMostrar = viendoSegunda ? (l.fecha_siembra_2 ?? l.fecha_siembra) : l.fecha_siembra
-            const variedadMostrar = viendoSegunda ? (l.variedad_2 ?? l.variedad) : l.variedad
+            const fechaMostrar = viendoSegunda ? (l.fecha_siembra_2 || null) : l.fecha_siembra
+            const variedadMostrar = viendoSegunda ? (l.variedad_2 || null) : l.variedad
             return (
               <div key={l.id}
                 className="aspect-square rounded-card flex flex-col relative overflow-hidden group transition-all duration-150 hover:-translate-y-1 hover:shadow-lg bg-white"
