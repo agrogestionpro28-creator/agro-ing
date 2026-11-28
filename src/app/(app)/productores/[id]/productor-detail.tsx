@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
+import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { useCampana } from '@/components/layout/app-shell';
@@ -84,7 +85,8 @@ export function ProductorDetail({ productor, campanas, ingeniero }:{ productor:P
   const [loading, setLoading] = useState(true);
   const [importando, setImportando] = useState(false);
   const [msg, setMsg] = useState('');
-  const [filtroCultivo, setFiltroCultivo] = useState('');
+  const searchParams = useSearchParams();
+  const [filtroCultivo, setFiltroCultivo] = useState(() => searchParams.get('filtro') ?? '');
   const [confirmDelete, setConfirmDelete] = useState<{id:string;nombre:string}|null>(null);
   const [showAplModal, setShowAplModal] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -695,7 +697,7 @@ export function ProductorDetail({ productor, campanas, ingeniero }:{ productor:P
                 {/* Franja de color superior por cultivo */}
                 <div style={{ height: '5px', background: s.stripColor, width: '100%', flexShrink: 0 }} />
 
-                <Link href={`/productores/${productor.id}/lotes/${l.id}`} className="flex flex-col justify-between flex-1 p-3 pb-8">
+                <Link href={`/productores/${productor.id}/lotes/${l.id}${filtroCultivo ? `?from=${encodeURIComponent(filtroCultivo)}` : ''}`} className="flex flex-col justify-between flex-1 p-3 pb-8">
                   {/* Nombre */}
                   <div>
                     <p className="font-black text-base leading-tight line-clamp-2" style={{ color: '#0f172a' }}>{l.nombre}</p>

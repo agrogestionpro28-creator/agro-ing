@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
+import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { cn } from '@/lib/utils';
@@ -33,6 +34,11 @@ type Ingeniero = { nombre:string; apellido:string|null; matricula:string|null; t
 const APL_VACIO = { fecha:new Date().toISOString().slice(0,10), tipo:'Herbicida', productos:'', maquinaria:'M', propio_alq:'Propio', contratista:'', costo_ha:'', hectareas_apl:'', observaciones:'' };
 
 export function LoteDetail({ lote:initial, productorId, productorNombre, ingeniero }: { lote:Lote; productorId:string; productorNombre:string; ingeniero:Ingeniero|null }) {
+  const searchParams = useSearchParams();
+  const fromFiltro = searchParams.get('from'); // filtro activo al entrar
+  const volverHref = fromFiltro
+    ? `/productores/${productorId}?filtro=${encodeURIComponent(fromFiltro)}`
+    : `/productores/${productorId}`;
   const [lote, setLote] = useState(initial);
   const [aplicaciones, setAplicaciones] = useState<Aplicacion[]>([]);
   const [lotesProductor, setLotesProductor] = useState<LoteSimple[]>([]);
@@ -631,7 +637,7 @@ export function LoteDetail({ lote:initial, productorId, productorNombre, ingenie
           <button onClick={()=>{setEditando(!editando); setShowAplForm(false);}} className="btn-ghost text-xs py-1 px-3">
             {editando ? '✕ Cancelar' : '✏ Editar'}
           </button>
-          <Link href={`/productores/${productorId}`} className="btn-ghost text-xs py-1 px-3">← Volver</Link>
+          <Link href={volverHref} className="btn-ghost text-xs py-1 px-3">← Volver</Link>
         </div>
       </div>
 
